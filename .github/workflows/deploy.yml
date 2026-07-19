@@ -1,0 +1,48 @@
+name: Deploy to GitHub Pages
+
+# 정적 사이트(자체 완결형 index.html)를 GitHub Pages에 배포한다.
+# main에 푸시될 때마다 자동 배포. 수동 실행도 가능(workflow_dispatch).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포는 한 번에 하나만 — 새 푸시가 오면 진행 중이던 배포는 취소
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 배포에 필요한 파일만 _site/에 모은다 (index.html은 이미 모든 이미지·폰트를 인라인한
+      # 자체 완결형이라 다른 파일이 필요 없음). CNAME은 커스텀 도메인 유지용.
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          [ -f CNAME ] && cp CNAME _site/ || true
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
