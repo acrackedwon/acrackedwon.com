@@ -38,11 +38,6 @@
   :root, html.wp-blue { --ink: #0a1d3f; --accent: #2f5bd9; }
   html.wp-green { --ink: #142f18; --accent: #2e7d3f; }
   html.wp-silver { --ink: #202226; --accent: #52565e; }
-  .top-note {
-    color: rgba(255,255,255,.62); font-size: 13px; font-weight: 600; letter-spacing: .01em;
-    text-shadow: 0 1px 4px rgba(0,0,0,.35);
-    margin: 0 0 34px; text-align: center;
-  }
 
   .deck { width: min(680px, 100%); display: flex; flex-direction: column; gap: 14px; }
 
@@ -61,6 +56,9 @@
 
   .head {
     all: unset; display: flex; align-items: center; justify-content: space-between;
+    /* all:unset resets box-sizing to content-box, so width:100% + padding would
+       exceed the card — restore border-box so the head fits exactly. */
+    box-sizing: border-box;
     width: 100%; cursor: pointer;
     font: inherit;
     font-size: var(--title-size);
@@ -316,8 +314,6 @@
   })();
 </script>
 
-<p class="top-note">mockup · tap a block</p>
-
 <div class="deck">
 
   <!-- 1. 이름 카드 -->
@@ -332,47 +328,7 @@
     </div></div></div>
   </section>
 
-  <!-- 2. Work -->
-  <section class="card noir">
-    <button class="head" aria-expanded="false">
-      <span class="title"><span class="flip-inner"><span class="face en">Work</span><span class="face fr" lang="fr" aria-hidden="true">Travail</span></span></span>    </button>
-    <div class="panel"><div class="panel-in"><div class="panel-pad">
-      <div class="glass" style="--i:0">
-        <div class="row">
-          <img src="{{LOGO_NEW}}" alt="On The Ground logo" style="width:56px;background:#fff">
-          <div>
-            <span class="pill">2022.10 –</span>
-            <span class="edu-title">On The Ground</span>
-            <p class="edu-sub">General Manager</p>
-          </div>
-        </div>
-      </div>
-      <a class="glass link-box" href="https://otg-bar.vercel.app" target="_blank" rel="noopener" style="--i:1">
-        <span class="chip"><span class="ico3d" aria-hidden="true">◑</span> Built an online 3D bar game <span class="arr">↗</span></span>
-        <p class="meta" style="margin-top:8px">Designed & shipped a playable WebGL mini-experience for the bar</p>
-      </a>
-      <div class="glass" style="--i:2">
-        <div class="ba2">
-          <img class="zoomable" src="{{LOGO_OLD}}" alt="On The Ground — original logo">
-          <span class="arr" aria-hidden="true">→</span>
-          <img class="zoomable" src="{{LOGO_NEW}}" alt="On The Ground — redesigned logo" style="background:#fff">
-        </div>
-        <p class="cap" style="margin:12px 0 0">Logo redesign</p>
-        <p class="meta">LP music bar, est. 2010</p>
-      </div>
-      <a class="glass link-box" href="https://naver.me/FgHp8lFH" target="_blank" rel="noopener" style="--i:3">
-        <div class="row">
-          <img src="{{NAVER}}" alt="Naver Place overhaul" style="width:100px">
-          <div>
-            <p class="cap" style="margin:0">Naver Place overhaul</p>
-            <p class="meta">Rebuilt the bar's local map presence <span class="arr">↗</span></p>
-          </div>
-        </div>
-      </a>
-    </div></div></div>
-  </section>
-
-  <!-- 3. School -->
+  <!-- 2. School -->
   <section class="card bleu">
     <button class="head" aria-expanded="false">
       <span class="title"><span class="flip-inner"><span class="face en">School</span><span class="face fr" lang="fr" aria-hidden="true">École</span></span></span>    </button>
@@ -449,6 +405,52 @@
             </div>
           </div>
         </div>
+      </div>
+    </div></div></div>
+  </section>
+
+  <!-- 3. Work -->
+  <section class="card noir">
+    <button class="head" aria-expanded="false">
+      <span class="title"><span class="flip-inner"><span class="face en">Work</span><span class="face fr" lang="fr" aria-hidden="true">Travail</span></span></span>    </button>
+    <div class="panel"><div class="panel-in"><div class="panel-pad">
+      <div class="glass" style="--i:0">
+        <div class="row">
+          <img src="{{LOGO_NEW}}" alt="On The Ground logo" style="width:56px;background:#fff">
+          <div>
+            <span class="pill">2022.10 –</span>
+            <span class="edu-title">On The Ground</span>
+            <p class="edu-sub">General Manager</p>
+          </div>
+        </div>
+      </div>
+      <a class="glass link-box" href="https://otg-bar.vercel.app" target="_blank" rel="noopener" style="--i:1">
+        <span class="chip"><span class="ico3d" aria-hidden="true">◑</span> Built an online 3D bar game <span class="arr">↗</span></span>
+        <p class="meta" style="margin-top:8px">Designed & shipped a playable WebGL mini-experience for the bar</p>
+      </a>
+      <div class="glass" style="--i:2">
+        <div class="ba2">
+          <img class="zoomable" src="{{LOGO_OLD}}" alt="On The Ground — original logo">
+          <span class="arr" aria-hidden="true">→</span>
+          <img class="zoomable" src="{{LOGO_NEW}}" alt="On The Ground — redesigned logo" style="background:#fff">
+        </div>
+        <p class="cap" style="margin:12px 0 0">Logo redesign</p>
+        <p class="meta">LP music bar, est. 2010</p>
+      </div>
+      <a class="glass link-box" href="https://naver.me/FgHp8lFH" target="_blank" rel="noopener" style="--i:3">
+        <div class="row">
+          <img src="{{NAVER}}" alt="Naver Place overhaul" style="width:100px">
+          <div>
+            <p class="cap" style="margin:0">Naver Place overhaul</p>
+            <p class="meta">Rebuilt the bar's local map presence <span class="arr">↗</span></p>
+          </div>
+        </div>
+      </a>
+      <div class="glass" style="--i:4">
+        <span class="pill">2026.03</span>
+        <span class="edu-title">Maîtres Cuisiniers de France — 70th World Congress</span>
+        <p class="edu-sub">FR ↔ KR Interpreter · Seoul</p>
+        <p class="meta" style="margin-top:8px">The French master-chefs' first world congress held in Asia — for the 140th anniversary of France–Korea relations, with ~200 chefs from 22 countries.</p>
       </div>
     </div></div></div>
   </section>

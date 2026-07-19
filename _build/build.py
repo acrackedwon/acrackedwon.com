@@ -65,10 +65,30 @@ def main():
     leftover = re.findall(r"\{\{[A-Z0-9_]+\}\}", html)
     assert not leftover, "unfilled placeholders remain: " + str(leftover)
 
+    # Wrap in a proper HTML document. The template is authored as page *content*
+    # (it starts at <title>) because when it's published as a Claude Artifact the
+    # host wraps it in a <head>/<body> skeleton. GitHub Pages serves index.html
+    # raw, so without an explicit <meta name="viewport"> mobile browsers fall back
+    # to a ~980px desktop layout and shrink it. Add the head here (and a clean
+    # <title>), stripping the template's inline mockup <title>.
+    body = re.sub(r"^<title>.*?</title>\s*", "", html, count=1, flags=re.DOTALL)
+    doc = (
+        "<!DOCTYPE html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '<meta charset="UTF-8">\n'
+        '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
+        "<title>Jiwon Shin</title>\n"
+        "</head>\n"
+        "<body>\n"
+        + body +
+        "\n</body>\n</html>\n"
+    )
+
     out = os.path.join(ROOT, "index.html")
     with open(out, "w") as f:
-        f.write(html)
-    print("wrote", out, len(html) // 1024, "KB")
+        f.write(doc)
+    print("wrote", out, len(doc) // 1024, "KB")
 
 
 if __name__ == "__main__":
