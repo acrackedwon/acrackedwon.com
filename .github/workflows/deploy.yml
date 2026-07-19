@@ -1,11 +1,11 @@
 name: Deploy to GitHub Pages
 
 # 정적 사이트(자체 완결형 index.html)를 GitHub Pages에 배포한다.
-# 아직 main 머지 전이라 작업 브랜치에서도 배포되게 해둠. 도메인 붙이고 main으로
-# 정리되면 branches를 [main]만 남기면 된다. 수동 실행도 가능(workflow_dispatch).
+# main에 푸시될 때마다 자동 배포. (github-pages 환경이 기본 브랜치에서만 배포를
+# 허용하므로 트리거도 main 전용.) 수동 실행도 가능(workflow_dispatch).
 on:
   push:
-    branches: [main, claude/erin-jung-design-analysis-w71yac]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
