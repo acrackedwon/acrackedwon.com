@@ -104,6 +104,24 @@
   .panel-in { min-height: 0; overflow: hidden; }
   .panel-pad { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 10px; }
 
+  /* ---------- 하위 항목 그룹 ----------
+     부모 뱃지(경희대 / 온더그라운드)에 딸린 항목들을 들여쓰기 + 세로 레일로 묶어
+     "위 뱃지에 속한 것"이 읽히게 한다. 부모 타일이 박스 전체 링크(<a>)라 그 안에
+     링크를 중첩할 수 없어서, 안에 넣는 대신 바로 아래 그룹으로 둔다. */
+  .sub-group {
+    display: flex; flex-direction: column; gap: 10px;
+    margin-left: 14px;
+    padding-left: 16px;
+    border-left: 2px solid color-mix(in srgb, var(--ink) 20%, transparent);
+  }
+  /* 자식 타일은 부모보다 한 단계 가벼운 무게감 */
+  .sub-group > .glass {
+    border-radius: 16px;
+    box-shadow:
+      inset 0 1px 0 hsla(0, 0%, 100%, .4),
+      0 6px 12px rgba(4, 11, 36, .08);
+  }
+
   /* ---------- 리퀴드 글래스 (카드는 무색, 텍스트는 무드별 잉크 색) ---------- */
   .glass {
     border-radius: 20px;
@@ -338,6 +356,9 @@
         <span class="edu-title">Kyung Hee University<span class="arr">↗</span></span>
         <p class="edu-sub">Dept. of French Language</p>
       </a>
+
+      <!-- ↓ 경희대에 딸린 활동들 (동아리 · 캡스톤) -->
+      <div class="sub-group">
       <div class="glass" style="--i:1">
         <div class="crate" aria-label="PARLÉ poster crate — hover or tap to pull one out">
           <img src="{{NP1}}" alt="PARLÉ 1ère réunion poster" tabindex="0">
@@ -406,6 +427,7 @@
           </div>
         </div>
       </div>
+      </div><!-- /sub-group -->
     </div></div></div>
   </section>
 
@@ -424,6 +446,8 @@
           </div>
         </div>
       </div>
+      <!-- ↓ 온더그라운드에서 만든 결과물들 -->
+      <div class="sub-group">
       <a class="glass link-box" href="https://otg-bar.vercel.app" target="_blank" rel="noopener" style="--i:1">
         <span class="chip"><span class="ico3d" aria-hidden="true">◑</span> Built an online 3D bar game <span class="arr">↗</span></span>
         <p class="meta" style="margin-top:8px">Designed & shipped a playable WebGL mini-experience for the bar</p>
@@ -446,6 +470,7 @@
           </div>
         </div>
       </a>
+      </div><!-- /sub-group -->
       <div class="glass" style="--i:4">
         <span class="pill">2026.03</span>
         <span class="edu-title">Maîtres Cuisiniers de France — 70th World Congress</span>
