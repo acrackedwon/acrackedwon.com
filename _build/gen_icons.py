@@ -4,11 +4,17 @@ Turn the repo-root .icns app icons into the base64 PNGs that build.py inlines.
 
     python3 _build/gen_icons.py      # writes _build/icons.b64.json
 
-Apple's icon grid leaves the art at ~86.7% of the tile (888 of 1024), but the
-uploaded set is mixed: Keynote/Mail/Pages already carry that padding, while the
-briefcase and the J fill their canvas edge to edge. Rendered at one box size
-those two would read ~15% larger than the rest, so every icon is cropped to its
-own alpha bounds and re-seated on the same grid.
+The uploaded set is inconsistent: Keynote/Pages/Messages sit on Apple's icon
+grid with the art at ~86.7% of the tile and transparent margins around it,
+while the briefcase and the J fill their canvas edge to edge. Rendered at one
+box size those two would read ~15% larger than the rest, so every icon is
+cropped to its own alpha bounds and rescaled to fill the tile.
+
+Filling the tile — rather than re-seating the art on Apple's 888-of-1024 grid —
+is what the dock needs. The demo this dock comes from uses full-bleed icon PNGs
+(112px files whose art spans all 112px), so its 75px slot shows 75px of icon.
+Keeping the margins would have shown 65px of icon in that same slot, leaving
+every icon 13% small against the container.
 
 Those two are also opaque squares — their corners are white, not transparent —
 so they need the squircle cut. Rather than approximate it with a rounded
@@ -21,7 +27,7 @@ import base64, io, json, os
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
-TILE, ART, OUT_PX = 1024, 888, 256  # 256px covers a 75px dock icon at 3x
+TILE, OUT_PX = 1024, 256  # 256px covers a 75px dock icon at 3x
 
 # key -> .icns filename (repo root)
 ICONS = {
@@ -48,9 +54,9 @@ def normalize(path):
     if im.getbbox() == (0, 0) + im.size:   # opaque square -> cut the squircle
         im.putalpha(squircle_mask(im.width))
     art = im.crop(im.getbbox())
-    # longest side -> ART, keeping the aspect ratio (these are all square)
+    # longest side -> the full tile, keeping the aspect ratio (these are all square)
     w, h = art.size
-    k = ART / max(w, h)
+    k = TILE / max(w, h)
     art = art.resize((max(1, round(w * k)), max(1, round(h * k))), Image.LANCZOS)
     tile = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
     tile.alpha_composite(art, ((TILE - art.width) // 2, (TILE - art.height) // 2))
