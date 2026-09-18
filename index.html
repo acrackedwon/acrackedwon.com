@@ -104,8 +104,13 @@
   }
   /* 원본 주석: 글래스 래퍼와 모든 레이어가 같은 모양이 되도록 자식 div 에도 같은 스타일을 준다. */
   .dock, .dock > div { border-radius: calc(var(--ico) * 0.42667); }   /* 32 / 75 */
-  .dock:hover { padding: calc(var(--ico) * 0.17067); }                /* 12.8 / 75 */
-  .dock:hover, .dock:hover > div { border-radius: calc(var(--ico) * 0.53333); }  /* 40 / 75 */
+  /* :not(.frozen) — 모프가 도는 동안에는 호버 크기 변화를 끈다. 켜 두면 이동이 끝난
+     뒤에야 호버가 풀리면서 0.4s 스프링이 한 번 더 돌아(그것도 목표보다 작아졌다가
+     튕겨 올라오는 언더슈트로) 이동과 분리된 별개의 동작으로 보인다. */
+  .dock:not(.frozen):hover { padding: calc(var(--ico) * 0.17067); }                /* 12.8 / 75 */
+  .dock:not(.frozen):hover,
+  .dock:not(.frozen):hover > div { border-radius: calc(var(--ico) * 0.53333); }    /* 40 / 75 */
+  .liquidGlass-wrapper.frozen { transition: none; }
 
   .dock .app {
     all: unset; box-sizing: border-box; display: block; cursor: pointer;
@@ -481,6 +486,7 @@ precision mediump float;
 // (GLSL ES 1.0 은 루프 경계가 상수여야 해서 uniform 으로는 못 준다.)
 uniform vec2  uRes;       // 캔버스 크기 (device px)
 uniform vec4  uRect;      // xy = 렌즈 중심(device px, y 위쪽), zw = 렌즈 반크기
+uniform float uRadius;    // 독의 border-radius (device px)
 uniform float uMix;       // 0 = 그냥 배경, 1 = 렌즈 완전히 켜짐
 uniform vec2  uTexScale;  // background-size: cover 재현
 uniform vec2  uTexOff;
@@ -488,14 +494,25 @@ uniform sampler2D uTex;
 
 vec4 bg(vec2 uv) { return texture2D(uTex, uv * uTexScale + uTexOff); }
 
+// 둥근 사각형까지의 부호 있는 거리. 안쪽이 음수, 테두리가 0.
+float sdRound(vec2 p, vec2 b, float r) {
+  vec2 q = abs(p) - b + r;
+  return min(max(q.x, q.y), 0.0) + length(max(q, vec2(0.0))) - r;
+}
+
 void main() {
   vec2 fc = gl_FragCoord.xy;
   vec2 uv = fc / uRes;
   vec4 base = bg(uv);
 
-  // 초타원 |x|^6 + |y|^6 — 독의 스퀘어클과 같은 모양. 테두리에서 1이 된다.
-  vec2 d = (fc - uRect.xy) / uRect.zw;
-  float rb = pow(abs(d.x), 6.0) + pow(abs(d.y), 6.0);
+  // 원본은 초타원 |x|^6 + |y|^6 을 쓰지만, 그건 CSS 의 border-radius 둥근 사각형과
+  // 실루엣이 다르다(변이 부풀고 모서리 곡률이 짧은 변에 끌려간다). CSS 레이어가
+  // 사라지면서 모양이 바뀌어 보이므로, 마스크를 독과 똑같은 둥근 사각형으로 깐다.
+  // t 는 중심 0 / 테두리 1 인 정규화 거리이고, 6제곱해서 원본과 같은 감쇠 프로파일
+  // (거의 전부 테두리 근처에 몰리는)을 유지한다.
+  float sd = sdRound(fc - uRect.xy, uRect.zw, uRadius);
+  float t  = clamp(1.0 + sd / min(uRect.z, uRect.w), 0.0, 1.0);
+  float rb = pow(t, 6.0);
 
   float rb1 = clamp((1.00 - rb)        *  8.0, 0.0, 1.0);
   float rb2 = clamp((0.95 - rb * 0.95) * 16.0, 0.0, 1.0)
@@ -803,6 +820,8 @@ void main() {
 (function () {
   const wrap   = document.querySelector('.liquidGlass-wrapper');
   const layers = [...document.querySelectorAll('.liquidGlass-effect, .liquidGlass-tint, .liquidGlass-shine')];
+  const nav    = wrap.querySelector('.dock');
+  const rounds = [...wrap.children];   // 4겹 전부 래퍼와 같은 라운드를 따라가야 한다
   // 독이 하단으로 내려오면 푸터 자리를 침범한다. 같은 트윈으로 같이 걷어낸다.
   // (이 스크립트는 <footer> 보다 앞에 있어서 실행 시점엔 아직 파싱 전이다 — 첫 사용 때 찾는다.)
   let _footer;
@@ -850,7 +869,7 @@ void main() {
       const p = gl.getAttribLocation(prog, 'p');
       gl.enableVertexAttribArray(p);
       gl.vertexAttribPointer(p, 2, gl.FLOAT, false, 0, 0);
-      loc = ['uRes','uRect','uMix','uTexScale','uTexOff','uTex'].reduce((o,k) => (o[k] = gl.getUniformLocation(prog, k), o), {});
+      loc = ['uRes','uRect','uRadius','uMix','uTexScale','uTexOff','uTex'].reduce((o,k) => (o[k] = gl.getUniformLocation(prog, k), o), {});
 
       // 배경 텍스처는 body::before 가 쓰는 바로 그 이미지를 그대로 읽어온다
       // (무드가 새로고침마다 랜덤이라 하드코딩할 수 없고, 같은 data URI 라 캐시에 붙는다).
@@ -895,6 +914,7 @@ void main() {
       H - (r.top + r.height / 2) * dpr,
       (r.width / 2) * dpr,
       (r.height / 2) * dpr);
+    gl.uniform1f(loc.uRadius, parseFloat(getComputedStyle(wrap).borderTopLeftRadius) * dpr);
     gl.uniform1f(loc.uMix, mix);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   };
@@ -903,8 +923,10 @@ void main() {
   // e: 0 = 원래 자리의 CSS 유리, 1 = 하단 중앙의 셰이더 유리.
   // 이동량은 항상 targetPx * e 라서, 트윈을 중간에 뒤집어도 위치가 튀지 않는다.
   let shaded = false, raf = 0, cur = 0, targetPx = 0;
+  let padFrom = 0, radFrom = 0, padTo = 0, radTo = 0;
 
-  const paint = e => {
+  // q: 크기 트윈(항상 0→1, 방향 무관). 시작 시점의 크기에서 호버 없는 기본 크기로 간다.
+  const paint = (e, q) => {
     cur = e;
     const a = 1 - e;
     wrap.style.transform = e ? 'translateY(' + (targetPx * e).toFixed(3) + 'px)' : '';
@@ -912,12 +934,45 @@ void main() {
     layers.forEach(l => l.style.opacity = e ? a : '');
     const f = footer(); if (f) f.style.opacity = e ? a : '';
     canvas.style.opacity = e ? 1 : 0;
+
+    if (q !== undefined) {
+      const pad = padFrom + (padTo - padFrom) * q;
+      const rad = radFrom + (radTo - radFrom) * q;
+      wrap.style.padding = nav.style.padding = pad.toFixed(3) + 'px';
+      wrap.style.borderRadius = rad.toFixed(3) + 'px';
+      nav.style.borderRadius = rad.toFixed(3) + 'px';
+      rounds.forEach(el => el.style.borderRadius = rad.toFixed(3) + 'px');
+    }
     if (e) draw(e);
+  };
+
+  const clearInline = () => [wrap, nav, ...rounds].forEach(el => { el.style.padding = ''; el.style.borderRadius = ''; });
+
+  const release = () => {
+    clearInline();
+    // frozen(transition: none)을 한 프레임 더 붙여둔 채로 인라인을 걷어낸다.
+    // 그래야 인라인 값과 CSS 계산값의 서브픽셀 차이가 0.4s 스프링을 다시 타지 않는다.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      wrap.classList.remove('frozen'); nav.classList.remove('frozen');
+    }));
   };
 
   const run = to => {
     cancelAnimationFrame(raf);
     const from = cur;
+
+    // 크기를 트윈에 합류시킨다 — 지금 크기(호버로 커져 있을 수 있다)에서 기본 크기로.
+    // frozen 이 붙는 동안 CSS 호버 규칙과 0.4s 스프링이 모두 꺼지므로, 이동·페이드·
+    // 크기가 전부 같은 곡선 위의 한 동작이 된다.
+    // 도착 크기는 계수로 다시 계산하지 않는다 — frozen 을 붙이면 호버 규칙이 꺼지므로
+    // 인라인을 걷어내고 바로 읽은 값이 곧 CSS 가 말하는 기본 크기다(서브픽셀까지 정확).
+    padFrom = parseFloat(getComputedStyle(wrap).paddingTop);
+    radFrom = parseFloat(getComputedStyle(wrap).borderTopLeftRadius);
+    wrap.classList.add('frozen'); nav.classList.add('frozen');
+    clearInline();
+    padTo = parseFloat(getComputedStyle(wrap).paddingTop);
+    radTo = parseFloat(getComputedStyle(wrap).borderTopLeftRadius);
+
     if (to > from) {
       // 변형이 걸린 상태에서도 '원래 자리' 기준으로 목표를 다시 잡는다
       const r = wrap.getBoundingClientRect();
@@ -929,8 +984,11 @@ void main() {
     const t0 = performance.now();
     const step = now => {
       const x = dur ? Math.min(1, (now - t0) / dur) : 1;
-      paint(from + (to - from) * ease(x));
-      if (x < 1) raf = requestAnimationFrame(step);
+      const k = ease(x);
+      paint(from + (to - from) * k, k);
+      if (x < 1) { raf = requestAnimationFrame(step); return; }
+      // 집에 다 돌아왔을 때만 호버를 되살린다 (셰이더 상태에서는 계속 기본 크기 유지)
+      if (cur === 0) release();
     };
     if (to > 0) canvas.style.opacity = 1;
     raf = requestAnimationFrame(step);
