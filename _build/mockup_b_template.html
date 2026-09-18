@@ -41,36 +41,60 @@
 
   .deck { width: min(680px, 100%); display: flex; flex-direction: column; gap: 14px; }
 
-  /* ---------- 큰 라운드 블록: 리퀴드 글래스 4겹 ----------
+  /* ---------- 큰 라운드 블록: 리퀴드 글래스 ----------
      단일 표면(backdrop-filter 하나)이 아니라 레이어를 나눠 쌓는다:
-       lg-effect  굴절 — backdrop-filter(흐림) + SVG feDisplacementMap(배경을 실제로 휘게)
+       lg-effect  유리 몸통 — backdrop-filter 로 흐림 + 채도/명도를 올린다
+       lg-lens    테두리 4변의 얇은 굴절 띠 — 여기서만 배경을 실제로 휘게 한다
        lg-tint    유리 자체의 옅은 색
        lg-shine   테두리에 빛이 걸린 림 라이트
        lg-content 실제 내용
-     굴절 레이어를 내용과 형제로 분리한 게 핵심이다 — filter 는 하위 전체에 적용되고
-     조상에 filter 가 있으면 하위 backdrop-filter 가 죽기 때문에, 내용 위에 걸면 안 된다. */
+     굴절을 가장자리에만 거는 게 핵심이다. 판 전체에 feTurbulence 를 걸면(원본 dock 방식)
+     배경이 통째로 조금씩 흔들릴 뿐이라 그냥 흐린 판과 구별이 안 된다. 실제 유리는
+     가운데가 거의 투명하고 림에서만 크게 꺾이므로, 각 변을 얇은 띠로 분리해서
+     backdrop-filter 에 1차원 그라디언트 변위맵을 물린다.
+     굴절 레이어를 내용과 형제로 분리한 것도 그대로 유지 — 조상에 filter 가 있으면
+     하위 backdrop-filter 가 죽기 때문에 내용 위에 걸면 안 된다. */
   .card {
     position: relative;
     border-radius: 38px;
     overflow: hidden;
     container-type: inline-size;
     --title-size: clamp(46px, 10.8cqw, 90px);
+    --lens: clamp(14px, 3.4cqw, 26px);
     transition: transform .45s cubic-bezier(.34,1.45,.5,1), box-shadow .45s ease;
   }
   .lg-effect {
-    position: absolute; inset: 0; z-index: 0;
-    -webkit-backdrop-filter: blur(3px);
-    backdrop-filter: blur(3px);
-    filter: url(#glass-distortion);
-    overflow: hidden;
-    isolation: isolate;
+    position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    -webkit-backdrop-filter: blur(11px) saturate(1.38) brightness(1.02);
+    backdrop-filter: blur(11px) saturate(1.38) brightness(1.02);
   }
-  .lg-tint { position: absolute; inset: 0; z-index: 1; background: hsla(0, 0%, 100%, .25); }
+  /* 4변의 굴절 띠. 두께는 고정 px 라 카드가 접히든 펼쳐지든 림 굵기가 일정하다.
+     backdrop-filter 에 url() 을 못 쓰는 브라우저(사파리·파이어폭스)는 앞 줄만 살아서
+     '림이 조금 더 흐린 유리' 로 자연스럽게 떨어진다. */
+  .lg-lens {
+    position: absolute; z-index: 0; pointer-events: none;
+    -webkit-backdrop-filter: blur(2px) brightness(1.05);
+    backdrop-filter: blur(2px) brightness(1.05);
+  }
+  .lg-lens.t { top: 0; left: 0; right: 0; height: var(--lens); backdrop-filter: url(#lens-t) blur(1px) brightness(1.04); }
+  .lg-lens.b { bottom: 0; left: 0; right: 0; height: var(--lens); backdrop-filter: url(#lens-b) blur(1px) brightness(1.04); }
+  .lg-lens.l { left: 0; top: 0; bottom: 0; width: var(--lens); backdrop-filter: url(#lens-l) blur(1px) brightness(1.04); }
+  .lg-lens.r { right: 0; top: 0; bottom: 0; width: var(--lens); backdrop-filter: url(#lens-r) blur(1px) brightness(1.04); }
+  .lg-tint {
+    position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background:
+      linear-gradient(180deg, hsla(0,0%,100%,.27) 0%, hsla(0,0%,100%,.17) 46%, hsla(0,0%,100%,.22) 100%);
+  }
   .lg-shine {
     position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    border-radius: inherit;
     box-shadow:
+      inset 0 0 0 1px hsla(0, 0%, 100%, .34),
       inset 2px 2px 1px 0 hsla(0, 0%, 100%, .5),
-      inset -1px -1px 1px 1px hsla(0, 0%, 100%, .5);
+      inset -1px -1px 1px 1px hsla(0, 0%, 100%, .45),
+      inset 0 0 10px 3px hsla(0, 0%, 100%, .10),
+      inset 0 6px 26px hsla(220, 30%, 8%, .09),
+      inset 0 -8px 26px hsla(220, 30%, 8%, .07);
   }
   .lg-content { position: relative; z-index: 3; }
   .card:hover { transform: scale(1.012); }
@@ -360,6 +384,10 @@
   <!-- 1. 이름 카드 -->
   <section class="card creme">
     <div class="lg-effect" aria-hidden="true"></div>
+    <div class="lg-lens t" aria-hidden="true"></div>
+    <div class="lg-lens b" aria-hidden="true"></div>
+    <div class="lg-lens l" aria-hidden="true"></div>
+    <div class="lg-lens r" aria-hidden="true"></div>
     <div class="lg-tint" aria-hidden="true"></div>
     <div class="lg-shine" aria-hidden="true"></div>
     <div class="lg-content">
@@ -377,6 +405,10 @@
   <!-- 2. School -->
   <section class="card bleu">
     <div class="lg-effect" aria-hidden="true"></div>
+    <div class="lg-lens t" aria-hidden="true"></div>
+    <div class="lg-lens b" aria-hidden="true"></div>
+    <div class="lg-lens l" aria-hidden="true"></div>
+    <div class="lg-lens r" aria-hidden="true"></div>
     <div class="lg-tint" aria-hidden="true"></div>
     <div class="lg-shine" aria-hidden="true"></div>
     <div class="lg-content">
@@ -467,6 +499,10 @@
   <!-- 3. Work -->
   <section class="card noir">
     <div class="lg-effect" aria-hidden="true"></div>
+    <div class="lg-lens t" aria-hidden="true"></div>
+    <div class="lg-lens b" aria-hidden="true"></div>
+    <div class="lg-lens l" aria-hidden="true"></div>
+    <div class="lg-lens r" aria-hidden="true"></div>
     <div class="lg-tint" aria-hidden="true"></div>
     <div class="lg-shine" aria-hidden="true"></div>
     <div class="lg-content">
@@ -521,6 +557,10 @@
   <!-- 4. Projects -->
   <section class="card acide">
     <div class="lg-effect" aria-hidden="true"></div>
+    <div class="lg-lens t" aria-hidden="true"></div>
+    <div class="lg-lens b" aria-hidden="true"></div>
+    <div class="lg-lens l" aria-hidden="true"></div>
+    <div class="lg-lens r" aria-hidden="true"></div>
     <div class="lg-tint" aria-hidden="true"></div>
     <div class="lg-shine" aria-hidden="true"></div>
     <div class="lg-content">
@@ -559,6 +599,10 @@
   <!-- 5. Contact -->
   <section class="card rouge">
     <div class="lg-effect" aria-hidden="true"></div>
+    <div class="lg-lens t" aria-hidden="true"></div>
+    <div class="lg-lens b" aria-hidden="true"></div>
+    <div class="lg-lens l" aria-hidden="true"></div>
+    <div class="lg-lens r" aria-hidden="true"></div>
     <div class="lg-tint" aria-hidden="true"></div>
     <div class="lg-shine" aria-hidden="true"></div>
     <div class="lg-content">
@@ -583,24 +627,43 @@
 
 </div>
 
-<!-- 리퀴드 글래스 굴절 필터 — .lg-effect 가 filter: url(#glass-distortion) 로 참조한다.
-     feTurbulence 로 노이즈를 만들고 feDisplacementMap 으로 그 노이즈만큼 배경을 밀어
-     실제 유리처럼 굴절시킨다. (출처: lucasromerodb/liquid-glass-effect-macos) -->
+<!-- 리퀴드 글래스 굴절 필터 — .lg-lens 4개가 backdrop-filter: url(#lens-*) 로 참조한다.
+
+     원본 macOS dock 데모(lucasromerodb)는 판 전체에 feTurbulence 변위를 걸지만,
+     우리 배경은 부드러운 그라디언트라 판 전체를 조금씩 흔들어봐야 결과 픽셀이 거의
+     그대로다 — 그래서 "그냥 흐린 판"과 구별이 안 됐다. 실제 유리는 가운데가 거의
+     투명하고 가장자리에서만 크게 꺾인다. 여기서는 그 림 굴절만 따로 구현한다:
+
+       feImage  : 1차원 선형 그라디언트 변위맵(노이즈가 아니다).
+                  R = X 변위, G = Y 변위, 128 = 변위 없음.
+                  바깥 모서리에서 최대, 안쪽으로 가면서 0으로 떨어진다.
+                  항상 '안쪽'을 샘플링하므로 띠 밖을 읽어 투명해질 일이 없다.
+       scale=20 : 최대 변위 10px ≈ 띠 두께의 절반. 띠 안쪽 절반이 압축돼 보이는,
+                  렌즈 가장자리 그대로의 모양이 나온다.
+
+     1차원 그라디언트라 띠를 가로로 늘려도 왜곡이 없다 — 카드가 접히든 펼쳐지든
+     (높이가 110px든 900px든) 림 굵기와 굴절 강도가 똑같이 유지된다.
+     color-interpolation-filters="sRGB" 가 없으면 색이 선형화돼 변위값이 틀어진다. -->
 <svg style="display:none" aria-hidden="true">
-  <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
-    <feTurbulence type="fractalNoise" baseFrequency="0.01 0.01" numOctaves="1" seed="5" result="turbulence"/>
-    <feComponentTransfer in="turbulence" result="mapped">
-      <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5"/>
-      <feFuncG type="gamma" amplitude="0" exponent="1" offset="0"/>
-      <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5"/>
-    </feComponentTransfer>
-    <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap"/>
-    <feSpecularLighting in="softMap" surfaceScale="5" specularConstant="1" specularExponent="100" lighting-color="white" result="specLight">
-      <fePointLight x="-200" y="-200" z="300"/>
-    </feSpecularLighting>
-    <feComposite in="specLight" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litImage"/>
-    <!-- scale: 원본은 작은 dock 기준 150. 큰 카드에선 번져서 40으로 낮춤 -->
-    <feDisplacementMap in="SourceGraphic" in2="softMap" scale="40" xChannelSelector="R" yChannelSelector="G"/>
+  <!-- 위 변 -->
+  <filter id="lens-t" color-interpolation-filters="sRGB" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+    <feImage href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%2380ff00'/%3E%3Cstop offset='1' stop-color='%23808000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' fill='url(%23g)'/%3E%3C/svg%3E" preserveAspectRatio="none" result="map"/>
+    <feDisplacementMap in="SourceGraphic" in2="map" scale="17" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <!-- 아래 변 -->
+  <filter id="lens-b" color-interpolation-filters="sRGB" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+    <feImage href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='1' x2='0' y2='0'%3E%3Cstop offset='0' stop-color='%23800000'/%3E%3Cstop offset='1' stop-color='%23808000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' fill='url(%23g)'/%3E%3C/svg%3E" preserveAspectRatio="none" result="map"/>
+    <feDisplacementMap in="SourceGraphic" in2="map" scale="17" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <!-- 왼쪽 변 -->
+  <filter id="lens-l" color-interpolation-filters="sRGB" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+    <feImage href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23ff8000'/%3E%3Cstop offset='1' stop-color='%23808000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' fill='url(%23g)'/%3E%3C/svg%3E" preserveAspectRatio="none" result="map"/>
+    <feDisplacementMap in="SourceGraphic" in2="map" scale="17" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <!-- 오른쪽 변 -->
+  <filter id="lens-r" color-interpolation-filters="sRGB" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+    <feImage href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='1' y1='0' x2='0' y2='0'%3E%3Cstop offset='0' stop-color='%23008000'/%3E%3Cstop offset='1' stop-color='%23808000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' fill='url(%23g)'/%3E%3C/svg%3E" preserveAspectRatio="none" result="map"/>
+    <feDisplacementMap in="SourceGraphic" in2="map" scale="17" xChannelSelector="R" yChannelSelector="G"/>
   </filter>
 </svg>
 
