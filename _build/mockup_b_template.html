@@ -87,7 +87,7 @@
     width: clamp(44px, 13vw, 75px); padding: 0;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 2.2);
   }
-  .dock .app svg { display: block; width: 100%; height: auto; }
+  .dock .app img { display: block; width: 100%; height: auto; }
   .dock .app:hover { transform: scale(0.95); transform-origin: center center; }
   .dock .app:focus-visible { outline: 3px solid rgba(255,255,255,.85); outline-offset: 3px; border-radius: 22%; }
 
@@ -436,7 +436,7 @@
 <!-- macOS 독 — freefrontend 04 의 마크업 구조 그대로:
      effect(굴절) / tint(유리 색) / shine(림 라이트) / text(내용) 4겹.
      5개 섹션이 각각 아이콘 하나가 된다. 아이콘 디자인과 눌렀을 때의 확장 동작은
-     아직 임시다 — 정해지면 아래 .deck 안의 내용을 그대로 끌어다 쓴다. -->
+     아직 정하는 중이다 — 정해지면 아래 .deck 안의 내용을 그대로 끌어다 쓴다. -->
 <div class="wrapper">
   <div class="liquidGlass-wrapper dock">
     <div class="liquidGlass-effect" aria-hidden="true"></div>
@@ -444,11 +444,11 @@
     <div class="liquidGlass-shine" aria-hidden="true"></div>
     <div class="liquidGlass-text">
       <nav class="dock" aria-label="Sections">
-          <button class="app" type="button" data-section="intro" aria-label="Jiwon Shin" title="Jiwon Shin"><svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><defs><linearGradient id="ic-me" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7d93ff"/><stop offset="1" stop-color="#3b5bdb"/></linearGradient></defs><rect width="96" height="96" rx="22" fill="url(#ic-me)"/><circle cx="48" cy="39" r="12.5" fill="#fff"/><path d="M25 75c0-12.7 10.3-21 23-21s23 8.3 23 21z" fill="#fff"/></svg></button>
-          <button class="app" type="button" data-section="school" aria-label="School" title="School"><svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><defs><linearGradient id="ic-school" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd36b"/><stop offset="1" stop-color="#ef9f14"/></linearGradient></defs><rect width="96" height="96" rx="22" fill="url(#ic-school)"/><path d="M48 24 79 39 48 54 17 39z" fill="#fff"/><path d="M31 46.5V60c0 5.8 7.6 10 17 10s17-4.2 17-10V46.5l-17 8.2z" fill="#fff" opacity=".92"/><path d="M74 43v16" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg></button>
-          <button class="app" type="button" data-section="work" aria-label="Work" title="Work"><svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><defs><linearGradient id="ic-work" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ad8a0"/><stop offset="1" stop-color="#12916b"/></linearGradient></defs><rect width="96" height="96" rx="22" fill="url(#ic-work)"/><path d="M38 35v-4a7 7 0 0 1 7-7h6a7 7 0 0 1 7 7v4" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><rect x="19" y="35" width="58" height="36" rx="8" fill="#fff"/><rect x="19" y="49" width="58" height="5" fill="#12916b" opacity=".28"/><rect x="42" y="46" width="12" height="11" rx="3" fill="#12916b" opacity=".45"/></svg></button>
-          <button class="app" type="button" data-section="projects" aria-label="Projects" title="Projects"><svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><defs><linearGradient id="ic-proj" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffa974"/><stop offset="1" stop-color="#ef5424"/></linearGradient></defs><rect width="96" height="96" rx="22" fill="url(#ic-proj)"/><rect x="20" y="20" width="26" height="26" rx="7" fill="#fff"/><rect x="50" y="20" width="26" height="26" rx="7" fill="#fff" opacity=".82"/><rect x="20" y="50" width="26" height="26" rx="7" fill="#fff" opacity=".82"/><rect x="50" y="50" width="26" height="26" rx="7" fill="#fff"/></svg></button>
-          <button class="app" type="button" data-section="contact" aria-label="Contact" title="Contact"><svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><defs><linearGradient id="ic-mail" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8ccfff"/><stop offset="1" stop-color="#2c7fdc"/></linearGradient></defs><rect width="96" height="96" rx="22" fill="url(#ic-mail)"/><rect x="17" y="29" width="62" height="39" rx="9" fill="#fff"/><path d="M22 36 48 55 74 36" fill="none" stroke="#2c7fdc" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="app" type="button" data-section="intro" aria-label="Jiwon Shin" title="Jiwon Shin"><img src="data:image/png;base64,{{IC_ME}}" alt="" draggable="false"></button>
+          <button class="app" type="button" data-section="school" aria-label="School" title="School"><img src="data:image/png;base64,{{IC_SCHOOL}}" alt="" draggable="false"></button>
+          <button class="app" type="button" data-section="work" aria-label="Work" title="Work"><img src="data:image/png;base64,{{IC_WORK}}" alt="" draggable="false"></button>
+          <button class="app" type="button" data-section="projects" aria-label="Projects" title="Projects"><img src="data:image/png;base64,{{IC_PROJECTS}}" alt="" draggable="false"></button>
+          <button class="app" type="button" data-section="contact" aria-label="Contact" title="Contact"><img src="data:image/png;base64,{{IC_CONTACT}}" alt="" draggable="false"></button>
       </nav>
     </div>
   </div>
