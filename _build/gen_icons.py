@@ -27,9 +27,9 @@ TILE, ART, OUT_PX = 1024, 888, 256  # 256px covers a 75px dock icon at 3x
 ICONS = {
     "IC_ME":       "J_AppStore_Parody.icns",
     "IC_SCHOOL":   "Pages__Default___macOS_26.2___V1rDQDsV2N_icns-7c97c4df97.icns",
-    "IC_WORK":     "Briefcase_AppleStyle.icns",
+    "IC_WORK":     "Briefcase_Green_AppleStyle.icns",
     "IC_PROJECTS": "Keynote__Default__LA9CMjniY1_icns-833002ae94.icns",
-    "IC_CONTACT":  "Mail__MacOS_Tahoe__OABVbEbk1D_icns-0b1f6e9e5a.icns",
+    "IC_CONTACT":  "Messages_macOS_Golden_Gate_ow94O6GAvP-3d83bcc95d.icns",
 }
 
 
