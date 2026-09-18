@@ -286,6 +286,105 @@
   .links { display: flex; gap: 2px 12px; flex-wrap: wrap; align-items: center; margin-left: -11px; }
   .links .chip.sm { margin-left: 0; }
 
+  /* ---------- 유리 CTA 버튼 ----------
+     베벨 잡힌 유리 알약 버튼. 원본 컴포넌트는 래퍼에 filter:contrast(3)을 걸어
+     흐린 의사요소를 또렷한 유리 테두리로 만드는 방식이었는데, 우리는 그걸 안 쓴다:
+     filter 는 하위 전체에 적용돼 사진 배경과 카드 색을 통째로 날려버리고,
+     조상에 filter 가 걸리면 하위의 backdrop-filter 가 페이지 배경을 못 읽어
+     리퀴드 글래스가 깨진다. 대신 대비 없이도 읽히도록 하이라이트를 직접 조정했다.
+     색은 무드(--ink)를 따라가고, 크기는 카드 폭(cqw)에 맞춰 유연하게 줄고 늘어난다. */
+  .glass-btn {
+    --r: 9999px;
+    all: unset;
+    box-sizing: border-box;
+    position: relative;
+    isolation: isolate;            /* 자체 스택 문맥 — 라이트박스(z-index:200) 위로 뜨지 않게 */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(10px, 2.4cqw, 16px);
+    width: fit-content;
+    max-width: 100%;
+    min-height: clamp(54px, 13cqw, 70px);
+    padding: 0 clamp(6px, 1.4cqw, 10px) 0 clamp(16px, 3.4cqw, 24px);
+    border-radius: var(--r);
+    border: 1px solid hsla(0, 0%, 100%, .28);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    background: hsla(0, 0%, 98%, .22);
+    -webkit-backdrop-filter: blur(11px) saturate(180%);
+    backdrop-filter: blur(11px) saturate(180%);
+    box-shadow:
+      inset 2px -2px 1px -1px hsla(0, 0%, 100%, .85),
+      inset -2px 2px 1px -1px hsla(0, 0%, 100%, .85),
+      inset 6px -6px 1px -6px hsla(0, 0%, 100%, .5),
+      inset -6px 6px 1px -6px hsla(0, 0%, 100%, .5),
+      inset 0 0 2px hsla(0, 0%, 0%, .28),
+      0 6px 14px rgba(4, 11, 36, .16);
+    /* 타일과 함께 촤라락 등장 — 단 opacity 에만 지연을 걸어서 hover/active 의
+       transform 반응이 느려지지 않게 한다 (transform 은 지연 없음). */
+    opacity: 0;
+    transition:
+      opacity .45s ease calc(var(--i, 0) * 75ms),
+      transform .25s cubic-bezier(.34,1.45,.5,1),
+      background .25s ease,
+      border-color .25s ease;
+  }
+  .open .glass-btn { opacity: 1; }
+  /* 대각선 스펙큘러 — 원본의 :after 를 대비 필터 없이 읽히도록 다듬음 */
+  .glass-btn::after {
+    content: "";
+    position: absolute; inset: 1px;
+    z-index: -1;
+    border-radius: var(--r);
+    filter: blur(5px);
+    background: linear-gradient(45deg,
+      hsla(0, 0%, 100%, .5) 0%,
+      transparent 20%,
+      transparent 80%,
+      hsla(0, 0%, 100%, .5) 100%);
+  }
+  /* 안쪽 얇은 링 (원본 .circle-overlay) */
+  .glass-btn-ring {
+    position: absolute; inset: 4px;
+    z-index: -1;
+    border: 1px solid hsla(0, 0%, 100%, .22);
+    border-radius: var(--r);
+    filter: blur(1px);
+    pointer-events: none;
+  }
+  .glass-btn-text {
+    font-size: clamp(17px, 4cqw, 23px);
+    font-weight: 500;                 /* 우리 타입 체계의 Medium 단 */
+    letter-spacing: -.3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .glass-btn-icon {
+    flex: none;
+    width: clamp(36px, 8.2cqw, 44px);
+    height: clamp(36px, 8.2cqw, 44px);
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: var(--ink);
+    box-shadow: 0 0 6px rgba(0, 0, 0, .28);
+    transition: transform .25s cubic-bezier(.34,1.45,.5,1);
+  }
+  .glass-btn-icon svg { width: clamp(13px, 3cqw, 16px); fill: hsla(0, 0%, 100%, .95); display: block; }
+
+  @media (hover: hover) {
+    .glass-btn:hover { background: hsla(0, 0%, 98%, .42); border-color: hsla(0, 0%, 100%, .44); transform: translateY(-3px); }
+    .glass-btn:hover .glass-btn-icon { transform: scale(1.1); }
+  }
+  .glass-btn:active { transform: scale(.96); }
+  .glass-btn:active .glass-btn-icon { transform: scale(.94); }
+  .glass-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+  /* 아주 좁은 화면에서는 폭을 꽉 채워 탭 영역을 키운다 */
+  @container (max-width: 360px) {
+    .glass-btn { width: 100%; justify-content: space-between; }
+  }
+
   /* ---------- 협업 서브섹션: PARLÉ 카드 "안쪽"에 중첩된 하위 블록 ----------
      예전엔 별도 .glass 카드였는데, 그러면 PARLÉ랑 동급으로 보여서
      PARLÉ 카드 내부에 눌러앉은 패널로 바꿈 (자체 그림자·테두리 없음, 안으로 들어간 느낌) */
@@ -330,7 +429,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .card, .panel, .glass, .flip-inner { transition: none; }
+    .card, .panel, .glass, .glass-btn, .glass-btn-icon, .flip-inner { transition: none; }
   }
 </style>
 
@@ -354,6 +453,13 @@
         <p class="cap" style="margin:0">French major at Kyung Hee who designs, builds, and runs small brands — end to end.</p>
         <p class="meta">Seoul · Designer & Operator</p>
       </div>
+      <button type="button" class="glass-btn" data-opens="contact" style="--i:1">
+        <span class="glass-btn-text">Get in touch</span>
+        <span class="glass-btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M779.180132 473.232045 322.354755 16.406668c-21.413706-21.413706-56.121182-21.413706-77.534887 0-21.413706 21.413706-21.413706 56.122205 0 77.534887l418.057421 418.057421L244.819868 930.057421c-21.413706 21.413706-21.413706 56.122205 0 77.534887 10.706853 10.706853 24.759917 16.059767 38.767955 16.059767s28.061103-5.353938 38.767955-16.059767L779.180132 550.767955C800.593837 529.35425 800.593837 494.64575 779.180132 473.232045z"></path></svg>
+        </span>
+        <span class="glass-btn-ring" aria-hidden="true"></span>
+      </button>
     </div></div></div>
   </section>
 
@@ -584,6 +690,18 @@
       const wasOpen = card.classList.contains('open');
       cards.forEach(closeCard);
       if (!wasOpen) openCard(card, head);
+    });
+  });
+
+  // CTA 버튼 → 해당 카드를 열고 그 위치로 스크롤
+  document.querySelectorAll('[data-opens]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.getAttribute('data-opens').toLowerCase();
+      const target = cards.find(c => (c.querySelector('.face.en')?.textContent || '').trim().toLowerCase() === name);
+      if (!target) return;
+      cards.forEach(closeCard);
+      openCard(target, target.querySelector('.head'));
+      target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     });
   });
 </script>
