@@ -78,20 +78,26 @@
   }
   .liquidGlass-text { z-index: 3; font-size: 2rem; color: black; }
 
+  /* 아이콘 한 칸이 독 전체의 기준 치수다. 원본(freefrontend 04)은 아이콘 75px 에
+     gap 8 / padding 9.6(0.6rem) / radius 32(2rem), 호버 시 padding 12.8(0.8rem) /
+     radius 40(2.5rem) 이다. 그 비율을 계수로 박아 --ico 하나에 전부 묶어두면
+     아이콘이 반응형으로 줄어도 독과의 비례가 원본 그대로 유지된다.
+     (전에는 아이콘만 clamp 로 줄고 radius 는 32px 고정이라, 좁은 화면에서
+      독이 아이콘에 비해 과하게 둥글고 두툼해졌다.) */
+  .liquidGlass-wrapper.dock { --ico: clamp(44px, 13vw, 75px); }
   .dock {
     display: flex; align-items: center; justify-content: center;
-    gap: clamp(5px, 1.5vw, 8px);
-    border-radius: 2rem;
-    padding: clamp(0.4rem, 1.4vw, 0.6rem);
+    gap: calc(var(--ico) * 0.10667);              /*  8   / 75 */
+    padding: calc(var(--ico) * 0.128);            /*  9.6 / 75 */
   }
   /* 원본 주석: 글래스 래퍼와 모든 레이어가 같은 모양이 되도록 자식 div 에도 같은 스타일을 준다. */
-  .dock, .dock > div { border-radius: 2rem; }
-  .dock:hover { padding: clamp(0.55rem, 1.9vw, 0.8rem); border-radius: 2.5rem; }
-  .dock:hover > div { border-radius: 2.5rem; }
+  .dock, .dock > div { border-radius: calc(var(--ico) * 0.42667); }   /* 32 / 75 */
+  .dock:hover { padding: calc(var(--ico) * 0.17067); }                /* 12.8 / 75 */
+  .dock:hover, .dock:hover > div { border-radius: calc(var(--ico) * 0.53333); }  /* 40 / 75 */
 
   .dock .app {
     all: unset; box-sizing: border-box; display: block; cursor: pointer;
-    width: clamp(44px, 13vw, 75px); padding: 0;
+    width: var(--ico); padding: 0;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 2.2);
   }
   .dock .app img { display: block; width: 100%; height: auto; }
