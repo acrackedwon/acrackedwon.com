@@ -535,7 +535,11 @@ void main() {
     col = mix(base, lit, transition);
   }
 
-  gl_FragColor = mix(base, col, uMix);
+  // 알파로 내보낸다. 캔버스 아래에는 body::before 가 같은 배경을 같은 cover 로 깔고
+  // 있으므로, col*uMix + base*(1-uMix) = mix(base, col, uMix) 로 결과가 같다.
+  // 대신 렌즈 주변만 그려도 나머지가 비어 보이지 않는다 — 전체화면을 셰이딩할 이유가
+  // 사라진다(이게 프레임 드롭의 원인이었다).
+  gl_FragColor = vec4(col.rgb, uMix);
 }
 </script>
 
@@ -820,8 +824,8 @@ void main() {
   let _footer;
   const footer = () => (_footer !== undefined ? _footer : (_footer = document.querySelector('footer')));
   const canvas = document.getElementById('glassgl');
-  const gl     = canvas.getContext('webgl', { alpha: false, premultipliedAlpha: false })
-              || canvas.getContext('experimental-webgl', { alpha: false });
+  const glOpts = { alpha: true, premultipliedAlpha: false, antialias: false, depth: false, stencil: false };
+  const gl     = canvas.getContext('webgl', glOpts) || canvas.getContext('experimental-webgl', glOpts);
 
   const DURATION = 820;
   const reduced  = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -887,12 +891,31 @@ void main() {
     }
   }
 
-  const draw = mix => {
-    if (!texReady) return;
+  // 독의 기하는 트윈이 시작될 때 딱 한 번만 읽는다. 매 프레임 읽으면 paint() 가 방금
+  // 쓴 인라인 스타일 때문에 강제 동기 레이아웃이 걸려서(= layout thrash) 프레임이
+  // 60ms 까지 밀린다 — 측정해 보면 픽셀 수나 셰이더 샘플 수를 줄여도 그대로이고,
+  // 이 읽기만 빼면 20ms 로 떨어진다.
+  //
+  // 이후 프레임의 값은 계산으로 낸다. 래퍼는 .wrapper 의 margin:auto 로 세로 중앙에,
+  // align-items:center 로 가로 중앙에 놓이므로, padding 이 커져도 '중심'은 고정이고
+  // 크기만 양쪽으로 2*Δpadding 만큼 자란다. 그래서 중심 = 원래 중심 + targetPx*e,
+  // 반크기 = (원래 크기 + 2*Δpadding)/2 로 정확히 떨어진다.
+  let geom = null;
+  const readGeom = () => {
+    const r = wrap.getBoundingClientRect();
+    geom = {
+      cx: r.left + r.width / 2,
+      cy: r.top + r.height / 2 - targetPx * cur,   // 변형을 뺀 '원래' 중심
+      w: r.width, h: r.height,
+      pad: parseFloat(getComputedStyle(wrap).paddingTop),
+    };
+  };
+
+  const draw = (mix, pad, rad) => {
+    if (!texReady || !geom) return;
     const dpr = Math.min(devicePixelRatio || 1, 2);
     const W = Math.round(innerWidth * dpr), H = Math.round(innerHeight * dpr);
     if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
-    gl.viewport(0, 0, W, H);
 
     // background-size: cover — 넘치는 쪽을 잘라내고 가운데를 남긴다
     const k = Math.max(W / texW, H / texH);
@@ -900,15 +923,24 @@ void main() {
     gl.uniform2f(loc.uTexScale, sx, sy);
     gl.uniform2f(loc.uTexOff, (1 - sx) / 2, (1 - sy) / 2);
 
-    const r = wrap.getBoundingClientRect();
+    const dw = 2 * (pad - geom.pad);
+    const cx = geom.cx * dpr, cy = H - (geom.cy + targetPx * mix) * dpr;
+    const hw = (geom.w + dw) / 2 * dpr, hh = (geom.h + dw) / 2 * dpr;
     gl.uniform2f(loc.uRes, W, H);
-    gl.uniform4f(loc.uRect,
-      (r.left + r.width / 2) * dpr,
-      H - (r.top + r.height / 2) * dpr,
-      (r.width / 2) * dpr,
-      (r.height / 2) * dpr);
-    gl.uniform1f(loc.uRadius, parseFloat(getComputedStyle(wrap).borderTopLeftRadius) * dpr);
+    gl.uniform4f(loc.uRect, cx, cy, hw, hh);
+    gl.uniform1f(loc.uRadius, rad * dpr);
     gl.uniform1f(loc.uMix, mix);
+
+    // 렌즈가 놓인 사각형만 셰이딩한다. gl_FragCoord 는 뷰포트가 아니라 드로잉 버퍼
+    // 기준이라 셰이더 안의 계산은 그대로 두면 된다. 전체화면(≈100만 px)에서
+    // 렌즈 크기(≈5만 px)로 줄어들어 프래그먼트 수가 20분의 1 이하가 된다.
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    const m = 2 * dpr;   // 반올림 여유
+    const vx = Math.max(0, Math.floor(cx - hw - m)), vy = Math.max(0, Math.floor(cy - hh - m));
+    const vw = Math.min(W - vx, Math.ceil(hw * 2 + m * 2)), vh = Math.min(H - vy, Math.ceil(hh * 2 + m * 2));
+    if (vw <= 0 || vh <= 0) return;
+    gl.viewport(vx, vy, vw, vh);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   };
 
@@ -928,15 +960,16 @@ void main() {
     const f = footer(); if (f) f.style.opacity = e ? a : '';
     canvas.style.opacity = e ? 1 : 0;
 
-    if (q !== undefined) {
-      const pad = padFrom + (padTo - padFrom) * q;
-      const rad = radFrom + (radTo - radFrom) * q;
+    const pad = padFrom + (padTo - padFrom) * (q === undefined ? 1 : q);
+    const rad = radFrom + (radTo - radFrom) * (q === undefined ? 1 : q);
+    // 크기 변화가 없는 방향(대개 되돌아올 때)에는 아예 쓰지 않는다 — 불필요한 무효화.
+    if (q !== undefined && (padTo !== padFrom || radTo !== radFrom)) {
       wrap.style.padding = nav.style.padding = pad.toFixed(3) + 'px';
       wrap.style.borderRadius = rad.toFixed(3) + 'px';
       nav.style.borderRadius = rad.toFixed(3) + 'px';
       rounds.forEach(el => el.style.borderRadius = rad.toFixed(3) + 'px');
     }
-    if (e) draw(e);
+    if (e) draw(e, pad, rad);
   };
 
   const clearInline = () => [wrap, nav, ...rounds].forEach(el => { el.style.padding = ''; el.style.borderRadius = ''; });
@@ -973,6 +1006,8 @@ void main() {
       const margin = Math.max(18, r.height * 0.22);
       targetPx = innerHeight - margin - naturalBottom;
     }
+    readGeom();
+
     const dur = reduced ? 0 : DURATION * Math.abs(to - from);
     const t0 = performance.now();
     const step = now => {
@@ -1003,6 +1038,7 @@ void main() {
     const r = wrap.getBoundingClientRect();
     targetPx = innerHeight - Math.max(18, r.height * 0.22) - r.bottom;
     wrap.style.transform = keep;
+    readGeom();
     paint(cur);
   });
 })();
