@@ -41,16 +41,38 @@
 
   .deck { width: min(680px, 100%); display: flex; flex-direction: column; gap: 14px; }
 
-  /* ---------- 큰 라운드 블록: 전부 리퀴드 글래스 ---------- */
+  /* ---------- 큰 라운드 블록: 리퀴드 글래스 4겹 ----------
+     단일 표면(backdrop-filter 하나)이 아니라 레이어를 나눠 쌓는다:
+       lg-effect  굴절 — backdrop-filter(흐림) + SVG feDisplacementMap(배경을 실제로 휘게)
+       lg-tint    유리 자체의 옅은 색
+       lg-shine   테두리에 빛이 걸린 림 라이트
+       lg-content 실제 내용
+     굴절 레이어를 내용과 형제로 분리한 게 핵심이다 — filter 는 하위 전체에 적용되고
+     조상에 filter 가 있으면 하위 backdrop-filter 가 죽기 때문에, 내용 위에 걸면 안 된다. */
   .card {
+    position: relative;
     border-radius: 38px;
     overflow: hidden;
     container-type: inline-size;
     --title-size: clamp(46px, 10.8cqw, 90px);
-    -webkit-backdrop-filter: blur(30px) saturate(160%);
-    backdrop-filter: blur(30px) saturate(160%);
     transition: transform .45s cubic-bezier(.34,1.45,.5,1), box-shadow .45s ease;
   }
+  .lg-effect {
+    position: absolute; inset: 0; z-index: 0;
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    filter: url(#glass-distortion);
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .lg-tint { position: absolute; inset: 0; z-index: 1; background: hsla(0, 0%, 100%, .25); }
+  .lg-shine {
+    position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    box-shadow:
+      inset 2px 2px 1px 0 hsla(0, 0%, 100%, .5),
+      inset -1px -1px 1px 1px hsla(0, 0%, 100%, .5);
+  }
+  .lg-content { position: relative; z-index: 3; }
   .card:hover { transform: scale(1.012); }
   .card.open { transform: none; }
 
@@ -95,7 +117,6 @@
     .card:not(.open):hover .flip-inner { transform: rotateX(180deg); }
   }
 
-  /* ---------- 아코디언 ---------- */
   /* ---------- 아코디언 ----------
      높이는 JS가 0 ↔ 실제 콘텐츠 높이(px)로 전환하고, 열림 애니메이션이 끝나면
      height:auto 로 넘겨 이후 리플로우(창 너비 변경 등)를 그대로 따라가게 한다.
@@ -279,104 +300,6 @@
   .links { display: flex; gap: 2px 12px; flex-wrap: wrap; align-items: center; margin-left: -11px; }
   .links .chip.sm { margin-left: 0; }
 
-  /* ---------- 유리 CTA 버튼 ----------
-     베벨 잡힌 유리 알약 버튼. 원본 컴포넌트는 래퍼에 filter:contrast(3)을 걸어
-     흐린 의사요소를 또렷한 유리 테두리로 만드는 방식이었는데, 우리는 그걸 안 쓴다:
-     filter 는 하위 전체에 적용돼 사진 배경과 카드 색을 통째로 날려버리고,
-     조상에 filter 가 걸리면 하위의 backdrop-filter 가 페이지 배경을 못 읽어
-     리퀴드 글래스가 깨진다. 대신 대비 없이도 읽히도록 하이라이트를 직접 조정했다.
-     색은 무드(--ink)를 따라가고, 크기는 카드 폭(cqw)에 맞춰 유연하게 줄고 늘어난다. */
-  .glass-btn {
-    --r: 9999px;
-    all: unset;
-    box-sizing: border-box;
-    position: relative;
-    isolation: isolate;            /* 자체 스택 문맥 — 라이트박스(z-index:200) 위로 뜨지 않게 */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: clamp(10px, 2.4cqw, 16px);
-    width: fit-content;
-    max-width: 100%;
-    min-height: clamp(54px, 13cqw, 70px);
-    padding: 0 clamp(6px, 1.4cqw, 10px) 0 clamp(16px, 3.4cqw, 24px);
-    border-radius: var(--r);
-    border: 1px solid hsla(0, 0%, 100%, .28);
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    background: hsla(0, 0%, 98%, .22);
-    -webkit-backdrop-filter: blur(11px) saturate(180%);
-    backdrop-filter: blur(11px) saturate(180%);
-    box-shadow:
-      inset 2px -2px 1px -1px hsla(0, 0%, 100%, .85),
-      inset -2px 2px 1px -1px hsla(0, 0%, 100%, .85),
-      inset 6px -6px 1px -6px hsla(0, 0%, 100%, .5),
-      inset -6px 6px 1px -6px hsla(0, 0%, 100%, .5),
-      inset 0 0 2px hsla(0, 0%, 0%, .28),
-      0 6px 14px rgba(4, 11, 36, .16);
-    /* 타일과 함께 촤라락 등장 — 단 opacity 에만 지연을 걸어서 hover/active 의
-       transform 반응이 느려지지 않게 한다 (transform 은 지연 없음). */
-    opacity: 0;
-    transition:
-      opacity .45s ease calc(var(--i, 0) * 75ms),
-      transform .25s cubic-bezier(.34,1.45,.5,1),
-      background .25s ease,
-      border-color .25s ease;
-  }
-  .open .glass-btn { opacity: 1; }
-  /* 대각선 스펙큘러 — 원본의 :after 를 대비 필터 없이 읽히도록 다듬음 */
-  .glass-btn::after {
-    content: "";
-    position: absolute; inset: 1px;
-    z-index: -1;
-    border-radius: var(--r);
-    filter: blur(5px);
-    background: linear-gradient(45deg,
-      hsla(0, 0%, 100%, .5) 0%,
-      transparent 20%,
-      transparent 80%,
-      hsla(0, 0%, 100%, .5) 100%);
-  }
-  /* 안쪽 얇은 링 (원본 .circle-overlay) */
-  .glass-btn-ring {
-    position: absolute; inset: 4px;
-    z-index: -1;
-    border: 1px solid hsla(0, 0%, 100%, .22);
-    border-radius: var(--r);
-    filter: blur(1px);
-    pointer-events: none;
-  }
-  .glass-btn-text {
-    font-size: clamp(17px, 4cqw, 23px);
-    font-weight: 500;                 /* 우리 타입 체계의 Medium 단 */
-    letter-spacing: -.3px;
-    color: var(--ink);
-    white-space: nowrap;
-  }
-  .glass-btn-icon {
-    flex: none;
-    width: clamp(36px, 8.2cqw, 44px);
-    height: clamp(36px, 8.2cqw, 44px);
-    display: grid; place-items: center;
-    border-radius: 50%;
-    background: var(--ink);
-    box-shadow: 0 0 6px rgba(0, 0, 0, .28);
-    transition: transform .25s cubic-bezier(.34,1.45,.5,1);
-  }
-  .glass-btn-icon svg { width: clamp(13px, 3cqw, 16px); fill: hsla(0, 0%, 100%, .95); display: block; }
-
-  @media (hover: hover) {
-    .glass-btn:hover { background: hsla(0, 0%, 98%, .42); border-color: hsla(0, 0%, 100%, .44); transform: translateY(-3px); }
-    .glass-btn:hover .glass-btn-icon { transform: scale(1.1); }
-  }
-  .glass-btn:active { transform: scale(.96); }
-  .glass-btn:active .glass-btn-icon { transform: scale(.94); }
-  .glass-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
-
-  /* 아주 좁은 화면에서는 폭을 꽉 채워 탭 영역을 키운다 */
-  @container (max-width: 360px) {
-    .glass-btn { width: 100%; justify-content: space-between; }
-  }
 
   /* ---------- 협업 서브섹션: PARLÉ 카드 "안쪽"에 중첩된 하위 블록 ----------
      예전엔 별도 .glass 카드였는데, 그러면 PARLÉ랑 동급으로 보여서
@@ -404,13 +327,10 @@
   .ci-meta { font-size: 11.5px; font-weight: 500; letter-spacing: -.3px; margin: 4px 0 0; color: var(--accent); opacity: 1; font-variant-numeric: tabular-nums; }
 
   /* ---------- 5개 블록: 색 틴트 없이 하나의 무색 리퀴드 글래스 ---------- */
+  /* 배경·테두리·림 라이트는 이제 lg-tint / lg-shine 레이어가 맡는다.
+     여기 남는 건 카드를 배경 위로 띄우는 바깥 그림자뿐. */
   .creme, .noir, .bleu, .acide, .rouge {
-    background: linear-gradient(165deg, rgba(255,255,255,.46), rgba(255,255,255,.20) 55%, rgba(255,255,255,.16));
-    border: 1px solid rgba(255,255,255,.40);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.55),
-      inset 0 -1px 0 rgba(255,255,255,.10),
-      0 24px 54px rgba(0,0,0,.38);
+    box-shadow: 0 24px 54px rgba(0,0,0,.38);
   }
 
   footer { color: rgba(255,255,255,.55); font-size: 13px; font-weight: 600; margin-top: 44px; text-shadow: 0 1px 4px rgba(0,0,0,.35); }
@@ -422,7 +342,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .card, .panel, .glass, .glass-btn, .glass-btn-icon, .flip-inner { transition: none; }
+    .card, .panel, .glass, .flip-inner { transition: none; }
   }
 </style>
 
@@ -439,6 +359,10 @@
 
   <!-- 1. 이름 카드 -->
   <section class="card creme">
+    <div class="lg-effect" aria-hidden="true"></div>
+    <div class="lg-tint" aria-hidden="true"></div>
+    <div class="lg-shine" aria-hidden="true"></div>
+    <div class="lg-content">
     <button class="head" aria-expanded="false">
       <span class="title"><span class="flip-inner"><span class="face en">Jiwon Shin</span><span class="face fr" lang="fr" aria-hidden="true">Enchanté&nbsp;!</span></span></span>    </button>
     <div class="panel"><div class="panel-in"><div class="panel-pad">
@@ -446,18 +370,16 @@
         <p class="cap" style="margin:0">French major at Kyung Hee who designs, builds, and runs small brands — end to end.</p>
         <p class="meta">Seoul · Designer & Operator</p>
       </div>
-      <button type="button" class="glass-btn" data-opens="contact" style="--i:1">
-        <span class="glass-btn-text">Get in touch</span>
-        <span class="glass-btn-icon" aria-hidden="true">
-          <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M779.180132 473.232045 322.354755 16.406668c-21.413706-21.413706-56.121182-21.413706-77.534887 0-21.413706 21.413706-21.413706 56.122205 0 77.534887l418.057421 418.057421L244.819868 930.057421c-21.413706 21.413706-21.413706 56.122205 0 77.534887 10.706853 10.706853 24.759917 16.059767 38.767955 16.059767s28.061103-5.353938 38.767955-16.059767L779.180132 550.767955C800.593837 529.35425 800.593837 494.64575 779.180132 473.232045z"></path></svg>
-        </span>
-        <span class="glass-btn-ring" aria-hidden="true"></span>
-      </button>
     </div></div></div>
+    </div>
   </section>
 
   <!-- 2. School -->
   <section class="card bleu">
+    <div class="lg-effect" aria-hidden="true"></div>
+    <div class="lg-tint" aria-hidden="true"></div>
+    <div class="lg-shine" aria-hidden="true"></div>
+    <div class="lg-content">
     <button class="head" aria-expanded="false">
       <span class="title"><span class="flip-inner"><span class="face en">School</span><span class="face fr" lang="fr" aria-hidden="true">École</span></span></span>    </button>
     <div class="panel"><div class="panel-in"><div class="panel-pad">
@@ -539,10 +461,15 @@
       </div>
       </div><!-- /sub-group -->
     </div></div></div>
+    </div>
   </section>
 
   <!-- 3. Work -->
   <section class="card noir">
+    <div class="lg-effect" aria-hidden="true"></div>
+    <div class="lg-tint" aria-hidden="true"></div>
+    <div class="lg-shine" aria-hidden="true"></div>
+    <div class="lg-content">
     <button class="head" aria-expanded="false">
       <span class="title"><span class="flip-inner"><span class="face en">Work</span><span class="face fr" lang="fr" aria-hidden="true">Travail</span></span></span>    </button>
     <div class="panel"><div class="panel-in"><div class="panel-pad">
@@ -588,10 +515,15 @@
         <p class="meta" style="margin-top:8px">The French master-chefs' first world congress held in Asia — for the 140th anniversary of France–Korea relations, with ~200 chefs from 22 countries.</p>
       </div>
     </div></div></div>
+    </div>
   </section>
 
   <!-- 4. Projects -->
   <section class="card acide">
+    <div class="lg-effect" aria-hidden="true"></div>
+    <div class="lg-tint" aria-hidden="true"></div>
+    <div class="lg-shine" aria-hidden="true"></div>
+    <div class="lg-content">
     <button class="head" aria-expanded="false">
       <span class="title"><span class="flip-inner"><span class="face en">Projects</span><span class="face fr" lang="fr" aria-hidden="true">Projets</span></span></span>    </button>
     <div class="panel"><div class="panel-in"><div class="panel-pad">
@@ -621,10 +553,15 @@
         </span>
       </a>
     </div></div></div>
+    </div>
   </section>
 
   <!-- 5. Contact -->
   <section class="card rouge">
+    <div class="lg-effect" aria-hidden="true"></div>
+    <div class="lg-tint" aria-hidden="true"></div>
+    <div class="lg-shine" aria-hidden="true"></div>
+    <div class="lg-content">
     <button class="head" aria-expanded="false">
       <span class="title"><span class="flip-inner"><span class="face en">Contact</span><span class="face fr" lang="fr" aria-hidden="true">Bonjour !</span></span></span>    </button>
     <div class="panel"><div class="panel-in"><div class="panel-pad">
@@ -641,9 +578,31 @@
         </span>
       </a>
     </div></div></div>
+    </div>
   </section>
 
 </div>
+
+<!-- 리퀴드 글래스 굴절 필터 — .lg-effect 가 filter: url(#glass-distortion) 로 참조한다.
+     feTurbulence 로 노이즈를 만들고 feDisplacementMap 으로 그 노이즈만큼 배경을 밀어
+     실제 유리처럼 굴절시킨다. (출처: lucasromerodb/liquid-glass-effect-macos) -->
+<svg style="display:none" aria-hidden="true">
+  <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+    <feTurbulence type="fractalNoise" baseFrequency="0.01 0.01" numOctaves="1" seed="5" result="turbulence"/>
+    <feComponentTransfer in="turbulence" result="mapped">
+      <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5"/>
+      <feFuncG type="gamma" amplitude="0" exponent="1" offset="0"/>
+      <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5"/>
+    </feComponentTransfer>
+    <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap"/>
+    <feSpecularLighting in="softMap" surfaceScale="5" specularConstant="1" specularExponent="100" lighting-color="white" result="specLight">
+      <fePointLight x="-200" y="-200" z="300"/>
+    </feSpecularLighting>
+    <feComposite in="specLight" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litImage"/>
+    <!-- scale: 원본은 작은 dock 기준 150. 큰 카드에선 번져서 40으로 낮춤 -->
+    <feDisplacementMap in="SourceGraphic" in2="softMap" scale="40" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
 
 <footer>Copyright © Jiwon Shin 2026</footer>
 
@@ -683,18 +642,6 @@
       const wasOpen = card.classList.contains('open');
       cards.forEach(closeCard);
       if (!wasOpen) openCard(card, head);
-    });
-  });
-
-  // CTA 버튼 → 해당 카드를 열고 그 위치로 스크롤
-  document.querySelectorAll('[data-opens]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const name = btn.getAttribute('data-opens').toLowerCase();
-      const target = cards.find(c => (c.querySelector('.face.en')?.textContent || '').trim().toLowerCase() === name);
-      if (!target) return;
-      cards.forEach(closeCard);
-      openCard(target, target.querySelector('.head'));
-      target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     });
   });
 </script>
