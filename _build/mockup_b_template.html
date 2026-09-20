@@ -105,8 +105,26 @@
   .dock:not(.frozen):hover > div { border-radius: calc(var(--ico) * 0.53333); }    /* 40 / 75 */
   .liquidGlass-wrapper.frozen { transition: none; }
 
+  /* 선택 표시 버블 — 독이 내려가 셰이더 유리가 된 상태에서, 열려 있는 섹션의 아이콘
+     뒤에 앉는 흰 리퀴드 글래스 알약. 다른 아이콘을 누르면 미끄러져 옮겨간다.
+     독 자체와 같은 재료(흐림+채도, 흰 틴트, 위쪽 1px 하이라이트 림)를 한 단계 밝게 쓴다.
+     라벨은 없다 — 독은 독으로 남긴다. */
+  nav.dock { position: relative; }
+  .dock .sel {
+    position: absolute; top: 0; left: 0; z-index: 0; pointer-events: none;
+    width: 0; height: 0; border-radius: calc(var(--ico) * 0.31);
+    background: linear-gradient(180deg, hsla(0,0%,100%,.62), hsla(0,0%,100%,.46));
+    -webkit-backdrop-filter: blur(8px) saturate(1.5); backdrop-filter: blur(8px) saturate(1.5);
+    box-shadow: inset 0 1px 0 hsla(0,0%,100%,.95), inset 0 0 0 1px hsla(0,0%,100%,.45), 0 4px 14px rgba(0,0,0,.14);
+    opacity: 0; transform: translate(0, 0);
+    transition: transform .38s cubic-bezier(.2,.9,.3,1), width .38s cubic-bezier(.2,.9,.3,1), height .38s cubic-bezier(.2,.9,.3,1), opacity .22s ease;
+  }
+  .dock .sel.on { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .dock .sel { transition: opacity .01s; } }
+
   .dock .app {
     all: unset; box-sizing: border-box; display: block; cursor: pointer;
+    position: relative; z-index: 1;   /* all:unset 뒤에 와야 한다 — 선택 버블(.sel) 위에 아이콘이 올라간다 */
     width: var(--ico); padding: 0;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 2.2);
   }
@@ -383,6 +401,7 @@ void main() {
     <div class="liquidGlass-shine" aria-hidden="true"></div>
     <div class="liquidGlass-text">
       <nav class="dock" aria-label="Sections">
+        <span class="sel" aria-hidden="true"></span>
           <button class="app" type="button" data-section="intro" aria-label="Jiwon Shin" title="Jiwon Shin"><img src="data:image/png;base64,{{IC_ME}}" alt="" draggable="false"></button>
           <button class="app" type="button" data-section="school" aria-label="School" title="School"><img src="data:image/png;base64,{{IC_SCHOOL}}" alt="" draggable="false"></button>
           <button class="app" type="button" data-section="work" aria-label="Work" title="Work"><img src="data:image/png;base64,{{IC_WORK}}" alt="" draggable="false"></button>
@@ -625,7 +644,7 @@ void main() {
       paint(from + (to - from) * k, k);
       if (x < 1) { raf = requestAnimationFrame(step); return; }
       // 집에 다 돌아왔을 때만 호버를 되살린다 (셰이더 상태에서는 계속 기본 크기 유지)
-      if (cur === 0) release();
+      if (cur === 0) release(); else placeSel();
     };
     if (to > 0) canvas.style.opacity = 1;
     raf = requestAnimationFrame(step);
@@ -648,6 +667,17 @@ void main() {
     win.style.setProperty('--win-bottom', Math.round(innerHeight - dockTop + 16) + 'px');
   };
 
+  // 선택 버블: 활성 아이콘의 박스를 약간 부풀린 자리에 앉힌다 (nav 기준 offset 사용).
+  const sel = nav.querySelector('.sel');
+  const placeSel = () => {
+    const btn = lastBtn; if (!btn || win.hidden) return;
+    const ico = btn.offsetWidth, inset = Math.round(ico * 0.09);
+    sel.style.width  = (btn.offsetWidth  + inset * 2) + 'px';
+    sel.style.height = (btn.offsetHeight + inset * 2) + 'px';
+    sel.style.transform = 'translate(' + (btn.offsetLeft - inset) + 'px,' + (btn.offsetTop - inset) + 'px)';
+  };
+  const showSel = on => { if (on) { placeSel(); sel.classList.add('on'); } else sel.classList.remove('on'); };
+
   const showPane = (key, btn) => {
     panes.forEach(pn => pn.hidden = pn.dataset.pane !== key);
     const pn = panes.find(x => x.dataset.pane === key);
@@ -658,6 +688,7 @@ void main() {
     apps.forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
     winBody.scrollTop = 0;
     activeKey = key; lastBtn = btn;
+    showSel(true);
   };
 
   const openWin = (key, btn) => {
@@ -681,6 +712,7 @@ void main() {
   const closeWin = () => {
     if (win.hidden) return;
     win.classList.remove('open');
+    showSel(false);
     apps.forEach(b => b.setAttribute('aria-pressed', 'false'));
     const done = () => { win.hidden = true; win.removeEventListener('transitionend', done); };
     if (reduced) done(); else { win.addEventListener('transitionend', done); setTimeout(done, 500); }
@@ -711,7 +743,7 @@ void main() {
       if (gl && texReady && shaded) { shaded = false; run(0); }
     }
   });
-  addEventListener('resize', () => { if (!win.hidden) placeWin(); });
+  addEventListener('resize', () => { if (!win.hidden) { placeWin(); placeSel(); } });
 
   // 리사이즈: 변형을 잠깐 걷어내고 '원래 자리'를 다시 재서 목표를 갱신한다.
   addEventListener('resize', () => {
