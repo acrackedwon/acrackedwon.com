@@ -114,227 +114,6 @@
   .dock .app:hover { transform: scale(0.95); transform-origin: center center; }
   .dock .app:focus-visible { outline: 3px solid rgba(255,255,255,.85); outline-offset: 3px; border-radius: 22%; }
 
-  /* 카드 아코디언은 아직 살려둔다 — 아이콘을 눌렀을 때 어떻게 펼칠지 정하면
-     여기 내용을 그대로 끌어다 쓴다. 지금은 화면에서만 감춘다. */
-  .deck[hidden] { display: none; }
-
-  /* ---------- 큰 라운드 블록: 리퀴드 글래스 ----------
-     단일 표면(backdrop-filter 하나)이 아니라 레이어를 나눠 쌓는다:
-       lg-effect  유리 몸통 — backdrop-filter 로 흐림 + 채도/명도를 올린다
-       lg-lens    테두리 4변의 얇은 굴절 띠 — 여기서만 배경을 실제로 휘게 한다
-       lg-tint    유리 자체의 옅은 색
-       lg-shine   테두리에 빛이 걸린 림 라이트
-       lg-content 실제 내용
-     굴절을 가장자리에만 거는 게 핵심이다. 판 전체에 feTurbulence 를 걸면(원본 dock 방식)
-     배경이 통째로 조금씩 흔들릴 뿐이라 그냥 흐린 판과 구별이 안 된다. 실제 유리는
-     가운데가 거의 투명하고 림에서만 크게 꺾이므로, 각 변을 얇은 띠로 분리해서
-     backdrop-filter 에 1차원 그라디언트 변위맵을 물린다.
-     굴절 레이어를 내용과 형제로 분리한 것도 그대로 유지 — 조상에 filter 가 있으면
-     하위 backdrop-filter 가 죽기 때문에 내용 위에 걸면 안 된다. */
-  .card {
-    position: relative;
-    border-radius: 38px;
-    overflow: hidden;
-    container-type: inline-size;
-    --title-size: clamp(46px, 10.8cqw, 90px);
-    --lens: clamp(14px, 3.4cqw, 26px);
-    transition: transform .45s cubic-bezier(.34,1.45,.5,1), box-shadow .45s ease;
-  }
-  .lg-effect {
-    position: absolute; inset: 0; z-index: 0; pointer-events: none;
-    -webkit-backdrop-filter: blur(11px) saturate(1.38) brightness(1.02);
-    backdrop-filter: blur(11px) saturate(1.38) brightness(1.02);
-  }
-  /* 4변의 굴절 띠. 두께는 고정 px 라 카드가 접히든 펼쳐지든 림 굵기가 일정하다.
-     backdrop-filter 에 url() 을 못 쓰는 브라우저(사파리·파이어폭스)는 앞 줄만 살아서
-     '림이 조금 더 흐린 유리' 로 자연스럽게 떨어진다. */
-  .lg-lens {
-    position: absolute; z-index: 0; pointer-events: none;
-    -webkit-backdrop-filter: blur(2px) brightness(1.05);
-    backdrop-filter: blur(2px) brightness(1.05);
-  }
-  .lg-lens.t { top: 0; left: 0; right: 0; height: var(--lens); backdrop-filter: url(#lens-t) blur(1px) brightness(1.04); }
-  .lg-lens.b { bottom: 0; left: 0; right: 0; height: var(--lens); backdrop-filter: url(#lens-b) blur(1px) brightness(1.04); }
-  .lg-lens.l { left: 0; top: 0; bottom: 0; width: var(--lens); backdrop-filter: url(#lens-l) blur(1px) brightness(1.04); }
-  .lg-lens.r { right: 0; top: 0; bottom: 0; width: var(--lens); backdrop-filter: url(#lens-r) blur(1px) brightness(1.04); }
-  .lg-tint {
-    position: absolute; inset: 0; z-index: 1; pointer-events: none;
-    background:
-      linear-gradient(180deg, hsla(0,0%,100%,.27) 0%, hsla(0,0%,100%,.17) 46%, hsla(0,0%,100%,.22) 100%);
-  }
-  .lg-shine {
-    position: absolute; inset: 0; z-index: 2; pointer-events: none;
-    border-radius: inherit;
-    box-shadow:
-      inset 0 0 0 1px hsla(0, 0%, 100%, .34),
-      inset 2px 2px 1px 0 hsla(0, 0%, 100%, .5),
-      inset -1px -1px 1px 1px hsla(0, 0%, 100%, .45),
-      inset 0 0 10px 3px hsla(0, 0%, 100%, .10),
-      inset 0 6px 26px hsla(220, 30%, 8%, .09),
-      inset 0 -8px 26px hsla(220, 30%, 8%, .07);
-  }
-  .lg-content { position: relative; z-index: 3; }
-  .card:hover { transform: scale(1.012); }
-  .card.open { transform: none; }
-
-  .head {
-    all: unset; display: flex; align-items: center; justify-content: space-between;
-    /* all:unset resets box-sizing to content-box, so width:100% + padding would
-       exceed the card — restore border-box so the head fits exactly. */
-    box-sizing: border-box;
-    width: 100%; cursor: pointer;
-    font: inherit;
-    font-size: var(--title-size);
-    /* padding in em (not px) so the bar's height scales at the exact same
-       rate as the title font — the ratio never drifts.
-       erin-jung의 큰 탭은 92px 텍스트에 16/24px 패딩(≈0.17em 세로 / 0.26em 가로)이라
-       글자가 컨테이너를 꽉 채운다 — 그 비율에 맞춰 세로 패딩을 크게 줄임 (아래는 광학 보정으로 살짝 더). */
-    padding: 0.20em 0.30em 0.25em;
-  }
-  .head:focus-visible { outline: 3px solid rgba(0,0,0,.35); outline-offset: -6px; border-radius: 38px; }
-  .title {
-    font-size: 1em;
-    /* erin-jung은 큰 제목에 SF Pro Rounded Semibold(≈600)를 씀 — 우리도 Semibold로 맞춤
-       (기존 800 Black 대신). letter-spacing:0도 실측 그대로. */
-    font-weight: 600; line-height: 1.0; letter-spacing: 0;
-    perspective: 900px; display: grid; text-align: left;
-    color: var(--ink);
-    /* erin-jung.com의 실제 큰 탭 타이틀 computed style에서 그대로 확인한 값 */
-    text-shadow: 1px 1px 2px hsla(0,0%,100%,.3), -1px -1px 0 #000;
-  }
-  /* erin-jung은 화면이 좁아지면(≤1035px) 큰 제목 자간을 -0.03em로 조여줌 — 카드 폭 기준으로 동일 적용 */
-  @container (max-width: 440px) {
-    .title { letter-spacing: -0.03em; }
-  }
-  /* ---- EN ↔ FR 스플릿플랩 플립 ---- */
-  .flip-inner {
-    display: grid; transform-style: preserve-3d;
-    transition: transform .7s cubic-bezier(.34,1.3,.45,1);
-  }
-  .face { grid-area: 1 / 1; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
-  .face.fr { transform: rotateX(180deg); }
-  .open .flip-inner { transform: rotateX(180deg); }
-  @media (hover: hover) {
-    .card:not(.open):hover .flip-inner { transform: rotateX(180deg); }
-  }
-
-  /* ---------- 아코디언 ----------
-     높이는 JS가 0 ↔ 실제 콘텐츠 높이(px)로 전환하고, 열림 애니메이션이 끝나면
-     height:auto 로 넘겨 이후 리플로우(창 너비 변경 등)를 그대로 따라가게 한다.
-     예전엔 grid-template-rows: 0fr→1fr 을 썼는데, Safari가 한 번 열린 뒤 1fr 행
-     높이를 다시 계산하지 않아 창을 좁히면 아래쪽 내용이 잘렸다. */
-  .panel {
-    height: 0; overflow: hidden;
-    transition: height .6s cubic-bezier(.3,1.15,.35,1);
-  }
-  .panel-in { min-height: 0; }
-  .panel-pad { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 10px; }
-
-  /* ---------- 하위 항목 그룹 ----------
-     부모 뱃지(경희대 / 온더그라운드)에 딸린 항목들을 들여쓰기 + 세로 레일로 묶어
-     "위 뱃지에 속한 것"이 읽히게 한다. 부모 타일이 박스 전체 링크(<a>)라 그 안에
-     링크를 중첩할 수 없어서, 안에 넣는 대신 바로 아래 그룹으로 둔다. */
-  .sub-group {
-    display: flex; flex-direction: column; gap: 10px;
-    margin-left: 14px;
-    padding-left: 16px;
-    border-left: 2px solid color-mix(in srgb, var(--ink) 20%, transparent);
-  }
-  /* 자식 타일은 부모보다 한 단계 가벼운 무게감 */
-  .sub-group > .glass {
-    border-radius: 16px;
-    box-shadow:
-      inset 0 1px 0 hsla(0, 0%, 100%, .4),
-      0 6px 12px rgba(4, 11, 36, .08);
-  }
-
-  /* ---------- 리퀴드 글래스 (카드는 무색, 텍스트는 무드별 잉크 색) ---------- */
-  .glass {
-    border-radius: 20px;
-    padding: 18px 20px;
-    color: var(--ink);
-    /* erin-jung.com의 .about/.skills 유리 박스 실측값을 그대로 따름:
-       거의 흰색(98% L)이지만 아주 투명 + 얇은 흰 테두리 + 매우 부드러운 그림자 + blur(10px).
-       원본은 .125 불투명이지만 우리 배경 무드가 더 어두워 잉크 가독성 위해 살짝만 올림(.20). */
-    background: hsla(0, 0%, 98%, .20);
-    -webkit-backdrop-filter: blur(11px) saturate(180%);
-    backdrop-filter: blur(11px) saturate(180%);
-    border: 1px solid hsla(0, 0%, 98%, .30);
-    box-shadow:
-      inset 0 1px 0 hsla(0, 0%, 100%, .45),
-      0 10px 16px rgba(4, 11, 36, .10);
-    /* 촤라락: 열릴 때 스태거 스프링 */
-    opacity: 0; transform: translateY(22px) scale(.96);
-    transition: opacity .45s ease, transform .55s cubic-bezier(.34,1.5,.5,1), background .25s ease, border-color .25s ease;
-  }
-  .open .glass { opacity: 1; transform: none; transition-delay: calc(var(--i, 0) * 75ms); }
-  /* hover 시 유리가 빛을 좀 더 받은 듯 밝아짐 — erin-jung의 hover 실측값(.502 / .439) */
-  @media (hover: hover) {
-    .glass:hover {
-      background: hsla(0, 0%, 98%, .42);
-      border-color: hsla(0, 0%, 100%, .44);
-    }
-  }
-
-  .glass .row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-  .glass img { border-radius: 14px; display: block; }
-  /* erin-jung 위계: 타일 제목 = Medium(강조), 설명/메타 = Regular(본문). 자간은 전부 -.3px(=-0.02em) */
-  .glass .cap { font-size: 17px; font-weight: 500; letter-spacing: -.3px; color: var(--ink); }
-  .glass .meta { font-size: 12.5px; font-weight: 400; letter-spacing: -.3px; opacity: .62; margin-top: 2px; font-variant-numeric: tabular-nums; }
-
-  /* ---------- 뱃지형 정보 타일: 작은 pill + 굵은 헤드라인 + 레귤러 서브라인 ---------- */
-  .pill {
-    display: inline-block; font-size: 12px; font-weight: 500;
-    padding: 4px 11px; border-radius: 999px; margin-bottom: 10px;
-    background: color-mix(in srgb, var(--ink) 20%, transparent); color: var(--ink);
-    font-variant-numeric: tabular-nums;
-  }
-  .edu-title {
-    display: block; text-decoration: none; color: var(--ink);
-    font-size: 21px; font-weight: 500; letter-spacing: -.3px; line-height: 1.25;
-  }
-  .edu-title .arr { font-size: 15px; opacity: .5; font-weight: 500; letter-spacing: -.3px; margin-left: 4px; }
-  .edu-sub { margin: 2px 0 0; font-size: 15px; font-weight: 400; letter-spacing: -.3px; color: var(--ink); opacity: .78; line-height: 1.3; }
-
-  .ba2 { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; justify-items: center; }
-  .ba2 img { width: 100%; max-width: 108px; border-radius: 14px; }
-  .ba2 .arr { font-size: 20px; opacity: .5; font-weight: 500; letter-spacing: -.3px; }
-
-  /* ---------- PARLÉ 포스터: LP 크레이트 — 좌우로 꽂아두고 hover 시 쏙 뽑힘 ---------- */
-  .crate {
-    position: relative; height: 196px; margin: 2px 0 10px;
-    width: 100%; -webkit-tap-highlight-color: transparent;
-  }
-  .crate img {
-    position: absolute; bottom: 6px;
-    width: clamp(92px, 22cqw, 116px); aspect-ratio: 4/5; object-fit: cover; object-position: top;
-    border-radius: 9px; border: 3px solid #fff;
-    box-shadow: 0 8px 18px rgba(29,29,31,.26);
-    transform-origin: bottom center;
-    transform: translateX(-50%) rotate(-5deg);
-    transition: transform .42s cubic-bezier(.34,1.55,.45,1), box-shadow .42s ease;
-    cursor: pointer;
-  }
-  /* 크레이트에 좌→우로 겹쳐 꽂힘 (뒤→앞 z-index), 전체 폭에 고르게 */
-  .crate img:nth-child(1)  { left: 9%;  z-index: 1; }
-  .crate img:nth-child(2)  { left: 18%; z-index: 2; }
-  .crate img:nth-child(3)  { left: 27%; z-index: 3; }
-  .crate img:nth-child(4)  { left: 36%; z-index: 4; }
-  .crate img:nth-child(5)  { left: 45%; z-index: 5; }
-  .crate img:nth-child(6)  { left: 54%; z-index: 6; }
-  .crate img:nth-child(7)  { left: 63%; z-index: 7; }
-  .crate img:nth-child(8)  { left: 72%; z-index: 8; }
-  .crate img:nth-child(9)  { left: 81%; z-index: 9; }
-  .crate img:nth-child(10) { left: 90%; z-index: 10; }
-  /* 쏙! — 그 판만 위로 뽑혀 똑바로 서고 커지고 맨 앞으로 */
-  .crate img:hover, .crate img.active, .crate img:focus-visible {
-    transform: translateX(-50%) translateY(-48px) rotate(0deg) scale(1.07);
-    box-shadow: 0 26px 46px rgba(29,29,31,.42);
-    z-index: 30; outline: none;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .crate img { transition: transform .01s, box-shadow .01s; }
-  }
 
   /* ---------- 사진 뷰어(라이트박스) ---------- */
   img.zoomable { cursor: zoom-in; }
@@ -371,68 +150,119 @@
     .lightbox, .lightbox img, .lb-close { transition: none; }
   }
 
-  /* ---------- 링크 칩: 텍스트+아이콘만 링크, 히트 영역 넉넉하게 ---------- */
-  .chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    text-decoration: none; font-weight: 500; font-size: 17px; letter-spacing: -.3px;
-    color: inherit;
-    padding: 8px 12px; margin-left: -12px; border-radius: 12px;
-    transition: background .18s ease;
+  /* ---------- 섹션 창 (Apple grouped-inset 문법) ----------
+     색: label .88 / secondary .55 / tertiary .30 / separator .10 — HIG 의 불투명도 체계.
+     간격: 8pt 그리드. 행 최소 높이 44. 구분선은 텍스트 리딩 에지에 맞춰 인셋.
+     서체는 사이트 기본(SF Pro Rounded 계열)을 그대로 — 구조는 애플, 목소리는 이 사이트. */
+  .win {
+    --label: rgba(0,0,0,.88); --label2: rgba(0,0,0,.55); --label3: rgba(0,0,0,.30);
+    --sep: rgba(0,0,0,.10); --fill: hsla(0,0%,100%,.58); --tint: #0a7aff;
+    position: fixed; left: 50%; bottom: var(--win-bottom, 140px); z-index: 5;
+    width: min(560px, calc(100% - 24px));
+    max-height: calc(100vh - var(--win-bottom, 140px) - 24px);
+    display: flex; flex-direction: column;
+    border-radius: 20px; overflow: hidden; color: var(--label);
+    box-shadow: inset 0 0 0 1px hsla(0,0%,100%,.55), 0 30px 80px rgba(0,0,0,.36), 0 2px 8px rgba(0,0,0,.12);
+    transform: translateX(-50%) translateY(14px) scale(.94);
+    transform-origin: 50% 100%;
+    opacity: 0; pointer-events: none;
+    transition: opacity .28s ease, transform .46s cubic-bezier(.2,.9,.3,1);
   }
-  .chip:hover, .chip:focus-visible {
-    background: color-mix(in srgb, currentColor 13%, transparent);
-    outline: none;
+  .win[hidden] { display: none; }
+  .win.open { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0) scale(1); }
+  .win-glass {
+    position: absolute; inset: 0; z-index: 0;
+    background: linear-gradient(180deg, hsla(0,0%,100%,.72), hsla(0,0%,100%,.62));
+    -webkit-backdrop-filter: blur(28px) saturate(1.7); backdrop-filter: blur(28px) saturate(1.7);
   }
-  /* 타일 전체가 링크인 경우 (otg-bar / KHU / francophones.kr / PMA / 이메일) */
-  .glass.link-box {
-    display: block; text-decoration: none; color: inherit; cursor: pointer;
+  .win-head, .win-body { position: relative; z-index: 1; }
+  .win-head { display: flex; align-items: center; gap: 14px; padding: 18px 16px 12px 20px; }
+  .win-icon { width: 56px; height: 56px; flex: none; display: block; }
+  .win-titles { flex: 1; min-width: 0; }
+  .win-title { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.4px; line-height: 1.15; color: var(--label); }
+  .win-sub { margin: 2px 0 0; font-size: 14px; font-weight: 400; letter-spacing: -.2px; color: var(--label2); }
+  .win-close {
+    all: unset; box-sizing: border-box; flex: none; width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center; cursor: pointer; align-self: flex-start;
+    background: rgba(0,0,0,.07); color: var(--label2); transition: background .15s ease, transform .15s ease;
   }
-  .glass.link-box:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-  .chip .dot {
-    width: 16px; height: 16px; border-radius: 50%; flex: none;
-    background: conic-gradient(#20408f 0 33%, #fff 33% 66%, #c8382e 66%);
-    border: .5px solid rgba(0,0,0,.2);
+  .win-close .sym { width: 13px; height: 13px; stroke-width: 2.4; }
+  .win-close:hover { background: rgba(0,0,0,.12); }
+  .win-close:active { transform: scale(.94); }
+  .win-close:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+  .win-body {
+    min-height: 0;   /* flex 자식이 max-height 를 넘칠 때 스크롤되려면 필수 */
+    overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+    padding: 4px 16px 20px; display: grid; gap: 22px; align-content: start;
   }
-  .chip .arr { opacity: .5; }
-  .chip.sm { font-size: 14px; font-weight: 500; letter-spacing: -.3px; margin-top: 8px; padding: 7px 11px; margin-left: -11px; }
-  .chip .ig, .chip .ico3d { flex: none; width: 17px; height: 17px; }
-  .chip .ico3d { font-size: 16px; line-height: 1; opacity: .8; }
-  .franco-ico { width: 24px; height: 24px; flex: none; display: block; }
-  .links { display: flex; gap: 2px 12px; flex-wrap: wrap; align-items: center; margin-left: -11px; }
-  .links .chip.sm { margin-left: 0; }
+  .pane { display: grid; gap: 22px; }
+  .pane[hidden] { display: none; }
+  .pane[data-pane="intro"]    { --tint: #0a7aff; }
+  .pane[data-pane="school"]   { --tint: #f0820f; }
+  .pane[data-pane="work"]     { --tint: #1f9d55; }
+  .pane[data-pane="projects"] { --tint: #2f6fe8; }
+  .pane[data-pane="contact"]  { --tint: #2fb24c; }
 
+  .grp { display: grid; gap: 6px; }
+  .grp-h { margin: 0 0 0 14px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--label2); }
+  .grp-f { margin: 0 14px; font-size: 13px; line-height: 1.4; letter-spacing: -.1px; color: var(--label2); }
+  .list { background: var(--fill); border-radius: 12px; box-shadow: 0 0 0 1px rgba(0,0,0,.05); overflow: hidden; }
 
-  /* ---------- 협업 서브섹션: PARLÉ 카드 "안쪽"에 중첩된 하위 블록 ----------
-     예전엔 별도 .glass 카드였는데, 그러면 PARLÉ랑 동급으로 보여서
-     PARLÉ 카드 내부에 눌러앉은 패널로 바꿈 (자체 그림자·테두리 없음, 안으로 들어간 느낌) */
-  .collab-sep {
-    display: flex; align-items: center; gap: 12px; margin: 18px 0 0;
-    color: rgba(0,0,0,.45); font-size: 10.5px; font-weight: 500; letter-spacing: -.3px;
-    letter-spacing: .18em; text-transform: uppercase; white-space: nowrap;
+  .row {
+    --lead: 14px;
+    position: relative; display: flex; align-items: center; gap: 12px;
+    min-height: 44px; padding: 10px 14px; text-decoration: none; color: inherit;
   }
-  .collab-sep::before, .collab-sep::after { content: ""; height: 1px; flex: 1; background: rgba(0,0,0,.18); }
-  .collab-sub {
-    margin-top: 10px; padding: 14px 16px 16px;
-    border-radius: 16px;
-    background: rgba(0,0,0,.05);
-    box-shadow: inset 0 1px 3px rgba(0,0,0,.08);
-  }
-  .collab-lockup { display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 16px; letter-spacing: -.3px; color: var(--ink); margin: 0; opacity: .85; }
-  .collab-lockup .x { color: var(--accent); font-weight: 500; letter-spacing: -.3px; }
-  .collab-lockup .dd { color: var(--accent); }
-  .collab-items { display: grid; gap: 13px; margin: 13px 0 4px; }
-  .collab-item { display: flex; gap: 12px; align-items: flex-start; padding-left: 13px; border-left: 2px solid var(--accent); }
-  .cthumb { width: 64px; aspect-ratio: 4/5; object-fit: cover; object-position: top; border-radius: 8px; flex: none; box-shadow: 0 4px 12px rgba(0,0,0,.35); }
-  .ci-title { font-size: 16px; font-weight: 500; letter-spacing: -.3px; margin: 0; color: var(--ink); }
-  .ci-desc { font-size: 12.5px; font-weight: 400; letter-spacing: -.3px; margin: 2px 0 0; color: var(--ink); opacity: .72; }
-  .ci-meta { font-size: 11.5px; font-weight: 500; letter-spacing: -.3px; margin: 4px 0 0; color: var(--accent); opacity: 1; font-variant-numeric: tabular-nums; }
+  .row.has-lead { --lead: 66px; }
+  .row + .row::before { content: ""; position: absolute; top: 0; left: var(--lead); right: 0; height: 1px; background: var(--sep); }
+  a.row { transition: background .12s ease; }
+  a.row:hover { background: rgba(0,0,0,.035); }
+  a.row:active { background: rgba(0,0,0,.07); transition: none; }
+  a.row:focus-visible { outline: 2px solid var(--tint); outline-offset: -2px; border-radius: 10px; }
+  .row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .row-t { font-size: 15px; font-weight: 500; letter-spacing: -.2px; line-height: 1.3; color: var(--label); }
+  .row-t.tint { color: var(--tint); }
+  .row-s { font-size: 13px; letter-spacing: -.1px; line-height: 1.35; color: var(--label2); }
+  .row-d { flex: none; font-size: 14px; letter-spacing: -.1px; color: var(--label2); font-variant-numeric: tabular-nums; }
+  .row-x { flex: none; width: 15px; height: 15px; color: var(--label3); display: grid; }
+  .row-x .sym { width: 100%; height: 100%; }
+  .row.prose { padding: 12px 14px; }
+  .row.prose .row-t { font-size: 15px; font-weight: 400; line-height: 1.45; }
 
-  /* ---------- 5개 블록: 색 틴트 없이 하나의 무색 리퀴드 글래스 ---------- */
-  /* 배경·테두리·림 라이트는 이제 lg-tint / lg-shine 레이어가 맡는다.
-     여기 남는 건 카드를 배경 위로 띄우는 바깥 그림자뿐. */
-  .creme, .noir, .bleu, .acide, .rouge {
-    box-shadow: 0 24px 54px rgba(0,0,0,.38);
+  .row-img { flex: none; width: 40px; height: 40px; object-fit: cover; border-radius: 9px; background: #fff; display: block; }
+  .row-img.tall { height: 50px; object-position: top; border-radius: 7px; }
+  .row-img.logo { padding: 3px; }
+  .row-img.wordmark { width: 40px; height: 40px; object-fit: contain; padding: 4px; }
+  .row-lead { flex: none; width: 40px; height: 40px; display: grid; place-items: center; }
+  .row-lead .franco-ico { width: 32px; height: 32px; }
+  .row-sym { flex: none; width: 30px; height: 30px; margin: 0 5px; border-radius: 8px; background: var(--tint); color: #fff; display: grid; place-items: center; }
+  .row-sym .sym { width: 17px; height: 17px; }
+  .ba { flex: none; display: flex; align-items: center; gap: 6px; color: var(--label3); }
+  .ba .sym { width: 14px; height: 14px; flex: none; }
+  .row.has-lead:has(.ba) { --lead: 120px; }
+  img.zoomable { cursor: zoom-in; }
+
+  /* 포스터: App Store 스크린샷 스트립 — 가로 스크롤 + 스냅 */
+  .row.gallery { padding: 0; display: block; }
+  .strip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 12px 14px; scrollbar-width: none; }
+  .strip::-webkit-scrollbar { display: none; }
+  .poster { flex: none; width: 92px; height: 115px; object-fit: cover; object-position: top; border-radius: 8px; scroll-snap-align: start; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.14); }
+
+  @media (max-width: 480px) {
+    .win { border-radius: 18px; }
+    .win-head { padding: 16px 14px 10px 16px; gap: 12px; }
+    .win-icon { width: 48px; height: 48px; }
+    .win-title { font-size: 22px; }
+    .win-body { padding: 2px 12px 16px; gap: 18px; }
+    .poster { width: 84px; height: 105px; }
+    /* 좁은 폭에서 trailing 날짜가 제목을 짓누르지 않도록, 부제 아래 줄로 내린다 */
+    .row { flex-wrap: wrap; }
+    .row-main { flex: 1 1 0; }
+    .row-x { order: 2; }
+    .row-d { order: 3; flex-basis: 100%; padding-left: calc(var(--lead) - 14px); font-size: 13px; margin-top: -2px; }
+    .row.gallery { flex-wrap: nowrap; }
   }
+  @media (prefers-reduced-motion: reduce) { .win { transition: none; } }
 
   footer { color: rgba(255,255,255,.55); font-size: 13px; font-weight: 600; margin-top: 44px; text-shadow: 0 1px 4px rgba(0,0,0,.35); }
 
@@ -442,9 +272,6 @@
     --wp-silver: url("data:image/jpeg;base64,{{WP_SILVER}}");
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .card, .panel, .glass, .flip-inner { transition: none; }
-  }
 </style>
 
 <script>
@@ -458,8 +285,8 @@
 
 <!-- macOS 독 — freefrontend 04 의 마크업 구조 그대로:
      effect(굴절) / tint(유리 색) / shine(림 라이트) / text(내용) 4겹.
-     5개 섹션이 각각 아이콘 하나가 된다. 아이콘 디자인과 눌렀을 때의 확장 동작은
-     아직 정하는 중이다 — 정해지면 아래 .deck 안의 내용을 그대로 끌어다 쓴다. -->
+     5개 섹션이 각각 아이콘 하나가 된다. 아이콘을 누르면 독이 하단으로 내려가 셰이더
+     유리가 되고, 그 위로 해당 섹션의 창(.win)이 아이콘에서 확대되어 열린다. -->
 <canvas id="glassgl" aria-hidden="true"></canvas>
 
 <!-- 리퀴드 글래스 셰이더 — freefrontend 05 (WebGL + GLSL).
@@ -566,253 +393,28 @@ void main() {
   </div>
 </div>
 
-<div class="deck" hidden>
-
-  <!-- 1. 이름 카드 -->
-  <section class="card creme">
-    <div class="lg-effect" aria-hidden="true"></div>
-    <div class="lg-lens t" aria-hidden="true"></div>
-    <div class="lg-lens b" aria-hidden="true"></div>
-    <div class="lg-lens l" aria-hidden="true"></div>
-    <div class="lg-lens r" aria-hidden="true"></div>
-    <div class="lg-tint" aria-hidden="true"></div>
-    <div class="lg-shine" aria-hidden="true"></div>
-    <div class="lg-content">
-    <button class="head" aria-expanded="false">
-      <span class="title"><span class="flip-inner"><span class="face en">Jiwon Shin</span><span class="face fr" lang="fr" aria-hidden="true">Enchanté&nbsp;!</span></span></span>    </button>
-    <div class="panel"><div class="panel-in"><div class="panel-pad">
-      <div class="glass" style="--i:0">
-        <p class="cap" style="margin:0">French major at Kyung Hee who designs, builds, and runs small brands — end to end.</p>
-        <p class="meta">Seoul · Designer & Operator</p>
-      </div>
-    </div></div></div>
+<!-- 섹션 창 — 독 아이콘을 누르면 그 아이콘에서 확대되어 독 위에 열린다.
+     Apple HIG 의 grouped inset list 문법: 대제목 헤더 → (섹션 헤더 / 행 목록 / 섹션 푸터) 반복.
+     행은 leading(이미지·심볼) / 제목+부제 / trailing(날짜·외부링크 화살표).
+     창 크롬은 흉내내지 않는다(신호등 없음) — 문법은 애플, 겉모습은 이 사이트의 것. -->
+<section class="win" id="win" role="dialog" aria-modal="false" aria-labelledby="win-title" hidden>
+  <div class="win-glass" aria-hidden="true"></div>
+  <header class="win-head">
+    <img class="win-icon" id="win-icon" src="" alt="" draggable="false">
+    <div class="win-titles">
+      <h1 class="win-title" id="win-title"></h1>
+      <p class="win-sub" id="win-sub"></p>
     </div>
-  </section>
-
-  <!-- 2. School -->
-  <section class="card bleu">
-    <div class="lg-effect" aria-hidden="true"></div>
-    <div class="lg-lens t" aria-hidden="true"></div>
-    <div class="lg-lens b" aria-hidden="true"></div>
-    <div class="lg-lens l" aria-hidden="true"></div>
-    <div class="lg-lens r" aria-hidden="true"></div>
-    <div class="lg-tint" aria-hidden="true"></div>
-    <div class="lg-shine" aria-hidden="true"></div>
-    <div class="lg-content">
-    <button class="head" aria-expanded="false">
-      <span class="title"><span class="flip-inner"><span class="face en">School</span><span class="face fr" lang="fr" aria-hidden="true">École</span></span></span>    </button>
-    <div class="panel"><div class="panel-in"><div class="panel-pad">
-      <a class="glass link-box" href="https://france.khu.ac.kr/france/user/main/view.do" target="_blank" rel="noopener" style="--i:0">
-        <span class="pill">2022.03 –</span>
-        <span class="edu-title">Kyung Hee University<span class="arr">↗</span></span>
-        <p class="edu-sub">Dept. of French Language</p>
-      </a>
-
-      <!-- ↓ 경희대에 딸린 활동들 (동아리 · 캡스톤) -->
-      <div class="sub-group">
-      <div class="glass" style="--i:1">
-        <div class="crate" aria-label="PARLÉ poster crate — hover or tap to pull one out">
-          <img src="{{NP1}}" alt="PARLÉ 1ère réunion poster" tabindex="0">
-          <img src="{{NP2}}" alt="PARLÉ wine tasting poster" tabindex="0">
-          <img src="{{NP3}}" alt="PARLÉ French film night poster" tabindex="0">
-          <img src="{{NP4}}" alt="PARLÉ goodbye party poster" tabindex="0">
-          <img src="{{NP5}}" alt="PARLÉ × ISC mid-term party poster" tabindex="0">
-          <img src="{{NP6}}" alt="PARLÉ 6ème réunion poster" tabindex="0">
-          <img src="{{NP7}}" alt="PARLÉ 2ème réunion poster" tabindex="0">
-          <img src="{{NP8}}" alt="PARLÉ 3ème réunion poster" tabindex="0">
-          <img src="{{NP9}}" alt="PARLÉ board-game night poster" tabindex="0">
-          <img src="{{NP10}}" alt="PARLÉ × SDGs rencontre poster" tabindex="0">
-        </div>
-        <p class="cap" style="margin:12px 0 0">PARLÉ — a French culture club at KHU</p>
-        <p class="meta">Founder & President · Posters · Events · 2023–</p>
-        <a class="chip sm" href="https://instagram.com/khu_parle" target="_blank" rel="noopener">
-          <svg class="ig" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
-          khu_parle <span class="arr">↗</span>
-        </a>
-
-        <!-- 협업: PARLÉ 카드 안쪽에 중첩된 하위 섹션 (동급 카드 아님) -->
-        <div class="collab-sep">in collaboration with</div>
-        <div class="collab-sub">
-          <p class="collab-lockup">PARLÉ <span class="x">×</span> <span class="dd">ddcoréen</span></p>
-          <p class="meta" style="margin-top:6px">Invited 고대영 (ddcoréen) — an SNS Korean-education creator teaching Korean across France (TikTok 110k · YouTube 106k)</p>
-          <div class="collab-items">
-            <div class="collab-item">
-              <img class="cthumb zoomable" src="{{CONF}}" alt="ddcoréen guest lecture poster">
-              <div>
-                <p class="ci-title">Conférence exceptionnelle</p>
-                <p class="ci-desc">A guest lecture — “Shouting Korea from France: learning &amp; cultural exchange in a global age”</p>
-                <p class="ci-meta">2025.09.23 · Zoom</p>
-              </div>
-            </div>
-            <div class="collab-item">
-              <img class="cthumb zoomable" src="{{LEX}}" alt="PARLÉ × ddcoréen language exchange card">
-              <div>
-                <p class="ci-title">Online language exchange</p>
-                <p class="ci-desc">Co-ran a card-news series &amp; program pairing Korean &amp; French learners online</p>
-              </div>
-            </div>
-          </div>
-          <a class="chip sm" href="https://instagram.com/ddcoreen" target="_blank" rel="noopener">
-            <svg class="ig" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
-            ddcoreen <span class="arr">↗</span>
-          </a>
-        </div>
-      </div>
-
-      <div class="glass" style="--i:2">
-        <div class="row">
-          <img class="zoomable" src="{{LYS_CLEAN}}" alt="Château de Lys — Naver smartstore detail page" style="width:150px">
-          <div>
-            <p class="cap" style="margin:0">Château de Lys</p>
-            <p class="meta">Capstone 2025 · rug design → production → store</p>
-            <div class="links">
-              <a class="chip sm" href="https://smartstore.naver.com/chateaudelys/products/12001333206" target="_blank" rel="noopener">
-                <svg class="ig" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>
-                Store <span class="arr">↗</span>
-              </a>
-              <a class="chip sm" href="https://instagram.com/chateau_de_lys" target="_blank" rel="noopener">
-                <svg class="ig" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
-                chateau_de_lys <span class="arr">↗</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-      </div><!-- /sub-group -->
-    </div></div></div>
-    </div>
-  </section>
-
-  <!-- 3. Work -->
-  <section class="card noir">
-    <div class="lg-effect" aria-hidden="true"></div>
-    <div class="lg-lens t" aria-hidden="true"></div>
-    <div class="lg-lens b" aria-hidden="true"></div>
-    <div class="lg-lens l" aria-hidden="true"></div>
-    <div class="lg-lens r" aria-hidden="true"></div>
-    <div class="lg-tint" aria-hidden="true"></div>
-    <div class="lg-shine" aria-hidden="true"></div>
-    <div class="lg-content">
-    <button class="head" aria-expanded="false">
-      <span class="title"><span class="flip-inner"><span class="face en">Work</span><span class="face fr" lang="fr" aria-hidden="true">Travail</span></span></span>    </button>
-    <div class="panel"><div class="panel-in"><div class="panel-pad">
-      <div class="glass" style="--i:0">
-        <div class="row">
-          <img src="{{LOGO_NEW}}" alt="On The Ground logo" style="width:56px;background:#fff">
-          <div>
-            <span class="pill">2022.10 –</span>
-            <span class="edu-title">On The Ground</span>
-            <p class="edu-sub">General Manager</p>
-          </div>
-        </div>
-      </div>
-      <!-- ↓ 온더그라운드에서 만든 결과물들 -->
-      <div class="sub-group">
-      <a class="glass link-box" href="https://otg-bar.vercel.app" target="_blank" rel="noopener" style="--i:1">
-        <span class="chip"><span class="ico3d" aria-hidden="true">◑</span> Built an online 3D bar game <span class="arr">↗</span></span>
-        <p class="meta" style="margin-top:8px">Designed & shipped a playable WebGL mini-experience for the bar</p>
-      </a>
-      <div class="glass" style="--i:2">
-        <div class="ba2">
-          <img class="zoomable" src="{{LOGO_OLD}}" alt="On The Ground — original logo">
-          <span class="arr" aria-hidden="true">→</span>
-          <img class="zoomable" src="{{LOGO_NEW}}" alt="On The Ground — redesigned logo" style="background:#fff">
-        </div>
-        <p class="cap" style="margin:12px 0 0">Logo redesign</p>
-        <p class="meta">LP music bar, est. 2010</p>
-      </div>
-      <a class="glass link-box" href="https://naver.me/FgHp8lFH" target="_blank" rel="noopener" style="--i:3">
-        <div class="row">
-          <img src="{{NAVER}}" alt="Naver Place overhaul" style="width:100px">
-          <div>
-            <p class="cap" style="margin:0">Naver Place overhaul</p>
-            <p class="meta">Rebuilt the bar's local map presence <span class="arr">↗</span></p>
-          </div>
-        </div>
-      </a>
-      </div><!-- /sub-group -->
-      <div class="glass" style="--i:4">
-        <span class="pill">2026.03</span>
-        <span class="edu-title">Maîtres Cuisiniers de France — 70th World Congress</span>
-        <p class="edu-sub">FR ↔ KR Interpreter · Seoul</p>
-        <p class="meta" style="margin-top:8px">The French master-chefs' first world congress held in Asia — for the 140th anniversary of France–Korea relations, with ~200 chefs from 22 countries.</p>
-      </div>
-    </div></div></div>
-    </div>
-  </section>
-
-  <!-- 4. Projects -->
-  <section class="card acide">
-    <div class="lg-effect" aria-hidden="true"></div>
-    <div class="lg-lens t" aria-hidden="true"></div>
-    <div class="lg-lens b" aria-hidden="true"></div>
-    <div class="lg-lens l" aria-hidden="true"></div>
-    <div class="lg-lens r" aria-hidden="true"></div>
-    <div class="lg-tint" aria-hidden="true"></div>
-    <div class="lg-shine" aria-hidden="true"></div>
-    <div class="lg-content">
-    <button class="head" aria-expanded="false">
-      <span class="title"><span class="flip-inner"><span class="face en">Projects</span><span class="face fr" lang="fr" aria-hidden="true">Projets</span></span></span>    </button>
-    <div class="panel"><div class="panel-in"><div class="panel-pad">
-      <a class="glass link-box" href="https://francophones.kr" target="_blank" rel="noopener" style="--i:0">
-        <span class="chip">{{FRANCO_ICON}} francophones.kr <span class="arr">↗</span></span>
-        <p class="meta" style="margin-top:8px">A community for francophones in Korea — building & running now</p>
-      </a>
-      <a class="glass link-box" href="https://instagram.com/premillenniumarchive" target="_blank" rel="noopener" style="--i:1">
-        <div class="row">
-          <img src="{{PMA_CLEAN}}" alt="Pre-Millennium Archive Instagram (@premillenniumarchive)" style="width:150px">
-          <div>
-            <p class="cap" style="margin:0">PRE-MILLENNIUM ARCHIVE</p>
-            <p class="meta">Y2K archive label · Co-founder · Brand & ops · 2021–2022</p>
-            <span class="chip sm">
-              <svg class="ig" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
-              premillenniumarchive <span class="arr">↗</span>
-            </span>
-          </div>
-        </div>
-      </a>
-      <a class="glass link-box" href="https://instagram.com/apresdocx" target="_blank" rel="noopener" style="--i:2">
-        <img src="{{APRESDOCX}}" alt="aprèsdocx" style="width:100%;max-width:160px;height:auto;display:block;margin:0 0 14px">
-        <p class="meta">Personal magazine · Founder &amp; editor · 2023.01–2023.04 · site currently closed</p>
-        <span class="chip sm" style="margin-top:10px">
-          <svg class="ig" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
-          apresdocx <span class="arr">↗</span>
-        </span>
-      </a>
-    </div></div></div>
-    </div>
-  </section>
-
-  <!-- 5. Contact -->
-  <section class="card rouge">
-    <div class="lg-effect" aria-hidden="true"></div>
-    <div class="lg-lens t" aria-hidden="true"></div>
-    <div class="lg-lens b" aria-hidden="true"></div>
-    <div class="lg-lens l" aria-hidden="true"></div>
-    <div class="lg-lens r" aria-hidden="true"></div>
-    <div class="lg-tint" aria-hidden="true"></div>
-    <div class="lg-shine" aria-hidden="true"></div>
-    <div class="lg-content">
-    <button class="head" aria-expanded="false">
-      <span class="title"><span class="flip-inner"><span class="face en">Contact</span><span class="face fr" lang="fr" aria-hidden="true">Bonjour !</span></span></span>    </button>
-    <div class="panel"><div class="panel-in"><div class="panel-pad">
-      <a class="glass link-box" href="mailto:acrackedwon@gmail.com" style="--i:0">
-        <span class="chip">
-          <svg class="ig" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="M3 6l9 6 9-6"/></svg>
-          acrackedwon@gmail.com <span class="arr">↗</span>
-        </span>
-      </a>
-      <a class="glass link-box" href="https://instagram.com/acrackedwon" target="_blank" rel="noopener" style="--i:1">
-        <span class="chip">
-          <svg class="ig" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
-          acrackedwon <span class="arr">↗</span>
-        </span>
-      </a>
-    </div></div></div>
-    </div>
-  </section>
-
-</div>
+    <button class="win-close" id="win-close" type="button" aria-label="Close"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </header>
+  <div class="win-body" id="win-body">
+  <article class="pane" data-pane="intro" data-title="Jiwon Shin" data-sub="Seoul · Designer &amp; Operator" hidden><section class="grp"><div class="list"><div class="row prose"><span class="row-main"><span class="row-t">French major at Kyung Hee who designs, builds, and runs small brands — end to end.</span></span></div></div><p class="grp-f">Enchanté&nbsp;!</p></section></article>
+  <article class="pane" data-pane="school" data-title="School" data-sub="École" hidden><section class="grp"><h2 class="grp-h">Education</h2><div class="list"><a class="row" href="https://france.khu.ac.kr/france/user/main/view.do" target="_blank" rel="noopener"><span class="row-main"><span class="row-t">Kyung Hee University</span><span class="row-s">Dept. of French Language</span></span><span class="row-d">2022.03 –</span><span class="row-x"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span></a></div></section><section class="grp"><h2 class="grp-h">PARLÉ</h2><div class="list"><div class="row gallery" aria-label="PARLÉ posters"><div class="strip"><img class="poster zoomable" src="{{NP1}}" alt="PARLÉ 1ère réunion poster"><img class="poster zoomable" src="{{NP2}}" alt="PARLÉ wine tasting poster"><img class="poster zoomable" src="{{NP3}}" alt="PARLÉ French film night poster"><img class="poster zoomable" src="{{NP4}}" alt="PARLÉ goodbye party poster"><img class="poster zoomable" src="{{NP5}}" alt="PARLÉ × ISC mid-term party poster"><img class="poster zoomable" src="{{NP6}}" alt="PARLÉ 6ème réunion poster"><img class="poster zoomable" src="{{NP7}}" alt="PARLÉ 2ème réunion poster"><img class="poster zoomable" src="{{NP8}}" alt="PARLÉ 3ème réunion poster"><img class="poster zoomable" src="{{NP9}}" alt="PARLÉ board-game night poster"><img class="poster zoomable" src="{{NP10}}" alt="PARLÉ × SDGs rencontre poster"></div></div><a class="row has-lead" href="https://instagram.com/khu_parle" target="_blank" rel="noopener"><span class="row-sym" aria-hidden="true"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></span><span class="row-main"><span class="row-t tint">khu_parle</span><span class="row-s">Instagram</span></span><span class="row-x"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span></a></div><p class="grp-f">A French culture club at KHU · Founder &amp; President · Posters · Events · 2023–</p></section><section class="grp"><h2 class="grp-h">PARLÉ × ddcoréen</h2><div class="list"><div class="row has-lead"><img class="row-img tall zoomable" src="{{CONF}}" alt="ddcoréen guest lecture poster"><span class="row-main"><span class="row-t">Conférence exceptionnelle</span><span class="row-s">A guest lecture — “Shouting Korea from France: learning &amp; cultural exchange in a global age”</span></span><span class="row-d">2025.09.23 · Zoom</span></div><div class="row has-lead"><img class="row-img tall zoomable" src="{{LEX}}" alt="PARLÉ × ddcoréen language exchange card"><span class="row-main"><span class="row-t">Online language exchange</span><span class="row-s">Co-ran a card-news series &amp; program pairing Korean &amp; French learners online</span></span></div><a class="row has-lead" href="https://instagram.com/ddcoreen" target="_blank" rel="noopener"><span class="row-sym" aria-hidden="true"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></span><span class="row-main"><span class="row-t tint">ddcoreen</span><span class="row-s">Instagram</span></span><span class="row-x"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span></a></div><p class="grp-f">Invited 고대영 (ddcoréen) — an SNS Korean-education creator teaching Korean across France (TikTok 110k · YouTube 106k)</p></section><section class="grp"><h2 class="grp-h">Château de Lys</h2><div class="list"><a class="row has-lead" href="https://smartstore.naver.com/chateaudelys/products/12001333206" target="_blank" rel="noopener"><img class="row-img tall" src="{{LYS_CLEAN}}" alt="Château de Lys — Naver smartstore detail page"><span class="row-main"><span class="row-t">Château de Lys</span><span class="row-s">Naver Smartstore</span></span><span class="row-x"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span></a><a class="row has-lead" href="https://instagram.com/chateau_de_lys" target="_blank" rel="noopener"><span class="row-sym" aria-hidden="true"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></span><span class="row-main"><span class="row-t tint">chateau_de_lys</span><span class="row-s">Instagram</span></span><span class="row-x"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span></a></div><p class="grp-f">Capstone 2025 · rug design → production → store</p></section></article>
+  <article class="pane" data-pane="work" data-title="Work" data-sub="Travail" hidden><section class="grp"><h2 class="grp-h">On The Ground</h2><div class="list"><div class="row has-lead"><img class="row-img logo" src="{{LOGO_NEW}}" alt="On The Ground logo"><span class="row-main"><span class="row-t">On The Ground</span><span class="row-s">General Manager</span></span><span class="row-d">2022.10 –</span></div><a class="row has-lead" href="https://otg-bar.vercel.app" target="_blank" rel="noopener"><span class="row-sym" aria-hidden="true"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 20 7.5v9L12 21 4 16.5v-9L12 3z"/><path d="M4 7.5 12 12l8-4.5M12 12v9"/></svg></span><span class="row-main"><span class="row-t">Online 3D bar game</span><span class="row-s">Designed &amp; shipped a playable WebGL mini-experience for the bar</span></span><span class="row-x"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span></a><div class="row has-lead"><span class="ba" aria-hidden="true"><img class="row-img zoomable" src="{{LOGO_OLD}}" alt="On The Ground — original logo"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg><img class="row-img logo zoomable" src="{{LOGO_NEW}}" alt="On The Ground — redesigned logo"></span><span class="row-main"><span class="row-t">Logo redesign</span><span class="row-s">Original → redesigned</span></span></div><a class="row has-lead" href="https://naver.me/FgHp8lFH" target="_blank" rel="noopener"><img class="row-img tall" src="{{NAVER}}" alt="Naver Place overhaul"><span class="row-main"><span class="row-t">Naver Place overhaul</span><span class="row-s">Rebuilt the bar’s local map presence</span></span><span class="row-x"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span></a></div><p class="grp-f">LP music bar, est. 2010</p></section><section class="grp"><h2 class="grp-h">Maîtres Cuisiniers de France</h2><div class="list"><div class="row"><span class="row-main"><span class="row-t">70th World Congress</span><span class="row-s">FR ↔ KR Interpreter · Seoul</span></span><span class="row-d">2026.03</span></div></div><p class="grp-f">The French master-chefs’ first world congress held in Asia — for the 140th anniversary of France–Korea relations, with ~200 chefs from 22 countries.</p></section></article>
+  <article class="pane" data-pane="projects" data-title="Projects" data-sub="Projets" hidden><section class="grp"><h2 class="grp-h">Now</h2><div class="list"><a class="row has-lead" href="https://francophones.kr" target="_blank" rel="noopener"><span class="row-lead">{{FRANCO_ICON}}</span><span class="row-main"><span class="row-t">francophones.kr</span><span class="row-s">A community for francophones in Korea — building &amp; running now</span></span><span class="row-x"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span></a></div></section><section class="grp"><h2 class="grp-h">Archive</h2><div class="list"><a class="row has-lead" href="https://instagram.com/premillenniumarchive" target="_blank" rel="noopener"><img class="row-img tall" src="{{PMA_CLEAN}}" alt="Pre-Millennium Archive Instagram (@premillenniumarchive)"><span class="row-main"><span class="row-t">PRE-MILLENNIUM ARCHIVE</span><span class="row-s">Y2K archive label · Co-founder · Brand &amp; ops</span></span><span class="row-d">2021–2022</span><span class="row-x"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span></a><a class="row has-lead" href="https://instagram.com/apresdocx" target="_blank" rel="noopener"><img class="row-img wordmark" src="{{APRESDOCX}}" alt="aprèsdocx"><span class="row-main"><span class="row-t">aprèsdocx</span><span class="row-s">Personal magazine · Founder &amp; editor</span></span><span class="row-d">2023.01–04</span><span class="row-x"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span></a></div><p class="grp-f">aprèsdocx’s site is currently closed.</p></section></article>
+  <article class="pane" data-pane="contact" data-title="Contact" data-sub="Bonjour&nbsp;!" hidden><section class="grp"><div class="list"><a class="row has-lead" href="mailto:acrackedwon@gmail.com"><span class="row-sym" aria-hidden="true"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7.5 12 13l8.5-5.5"/></svg></span><span class="row-main"><span class="row-t">acrackedwon@gmail.com</span><span class="row-s">Mail</span></span><span class="row-x"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span></a><a class="row has-lead" href="https://instagram.com/acrackedwon" target="_blank" rel="noopener"><span class="row-sym" aria-hidden="true"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></span><span class="row-main"><span class="row-t">acrackedwon</span><span class="row-s">Instagram</span></span><span class="row-x"><svg class="sym" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span></a></div></section></article>
+  </div>
+</section>
 
 <script>
 /* 독 → 셰이더 유리 전환.
@@ -963,7 +565,8 @@ void main() {
     wrap.style.transform = e ? 'translateY(' + (targetPx * e).toFixed(3) + 'px)' : '';
     wrap.style.boxShadow = e ? '0 6px 6px rgba(0,0,0,' + (0.2 * a).toFixed(3) + '), 0 0 20px rgba(0,0,0,' + (0.1 * a).toFixed(3) + ')' : '';
     layers.forEach(l => l.style.opacity = e ? a : '');
-    const f = footer(); if (f) f.style.opacity = e ? a : '';
+    // 푸터는 흐려질 뿐 레이아웃에 남아 내려온 독 위에 겹친다 — 클릭을 가로채지 않게 한다
+    const f = footer(); if (f) { f.style.opacity = e ? a : ''; f.style.pointerEvents = e ? 'none' : ''; }
     canvas.style.opacity = e ? 1 : 0;
 
     const pad = padFrom + (padTo - padFrom) * (q === undefined ? 1 : q);
@@ -1028,13 +631,87 @@ void main() {
     raf = requestAnimationFrame(step);
   };
 
-  document.querySelectorAll('.dock .app').forEach(btn => {
+  /* ---------- 섹션 창 ---------- */
+  const win = document.getElementById('win');
+  const winIcon = document.getElementById('win-icon'), winTitle = document.getElementById('win-title'),
+        winSub = document.getElementById('win-sub'), winBody = document.getElementById('win-body');
+  const panes = [...win.querySelectorAll('.pane')];
+  const apps = [...document.querySelectorAll('.dock .app')];
+  let activeKey = null, lastBtn = null;
+
+  // 창은 항상 독 바로 위에 앉는다. 독이 어디에 있든(내려갔든 아니든) 그 rect 로 잰다.
+  const placeWin = () => {
+    const dockBottom = gl && texReady && geom
+      ? geom.cy + targetPx + geom.h / 2          // 내려간 뒤의 독 하단 (트윈 중이어도 도착 지점)
+      : wrap.getBoundingClientRect().bottom;
+    const dockTop = dockBottom - (geom ? geom.h : wrap.getBoundingClientRect().height);
+    win.style.setProperty('--win-bottom', Math.round(innerHeight - dockTop + 16) + 'px');
+  };
+
+  const showPane = (key, btn) => {
+    panes.forEach(pn => pn.hidden = pn.dataset.pane !== key);
+    const pn = panes.find(x => x.dataset.pane === key);
+    winTitle.textContent = pn.dataset.title;
+    winSub.innerHTML = pn.dataset.sub;
+    winIcon.src = btn.querySelector('img').src;
+    winIcon.alt = '';
+    apps.forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+    winBody.scrollTop = 0;
+    activeKey = key; lastBtn = btn;
+  };
+
+  const openWin = (key, btn) => {
+    const switching = !win.hidden && activeKey && activeKey !== key;
+    showPane(key, btn);
+    placeWin();
+    if (win.hidden) {
+      win.hidden = false;
+      // 눌린 아이콘에서 확대되어 나오도록 transform-origin 을 그 아이콘 x 에 맞춘다
+      const wr = win.getBoundingClientRect(), br = btn.getBoundingClientRect();
+      win.style.transformOrigin = Math.round(br.left + br.width / 2 - wr.left) + 'px 100%';
+      requestAnimationFrame(() => requestAnimationFrame(() => win.classList.add('open')));
+    } else if (switching) {
+      // 내용 교체: 짧은 페이드
+      winBody.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
+                      { duration: reduced ? 0 : 220, easing: 'cubic-bezier(.2,.9,.3,1)' });
+    }
+    document.getElementById('win-close').focus({ preventScroll: true });
+  };
+
+  const closeWin = () => {
+    if (win.hidden) return;
+    win.classList.remove('open');
+    apps.forEach(b => b.setAttribute('aria-pressed', 'false'));
+    const done = () => { win.hidden = true; win.removeEventListener('transitionend', done); };
+    if (reduced) done(); else { win.addEventListener('transitionend', done); setTimeout(done, 500); }
+    if (lastBtn) lastBtn.focus({ preventScroll: true });
+    activeKey = null;
+  };
+
+  apps.forEach(btn => {
     btn.addEventListener('click', () => {
-      if (!gl || !texReady) return;        // WebGL 없으면 기존 CSS 독 그대로
-      shaded = !shaded;
-      run(shaded ? 1 : 0);
+      const key = btn.dataset.section;
+      const canMorph = !!(gl && texReady);
+      if (!win.hidden && activeKey === key) {         // 같은 아이콘 다시 누르면 닫고 독 복귀
+        closeWin();
+        if (canMorph && shaded) { shaded = false; run(0); }
+        return;
+      }
+      if (canMorph && !shaded) { shaded = true; run(1); }   // WebGL 없으면 독은 제자리, 창만 연다
+      openWin(key, btn);
     });
   });
+  document.getElementById('win-close').addEventListener('click', () => {
+    closeWin();
+    if (gl && texReady && shaded) { shaded = false; run(0); }
+  });
+  addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !win.hidden && !document.getElementById('lightbox').classList.contains('open')) {
+      closeWin();
+      if (gl && texReady && shaded) { shaded = false; run(0); }
+    }
+  });
+  addEventListener('resize', () => { if (!win.hidden) placeWin(); });
 
   // 리사이즈: 변형을 잠깐 걷어내고 '원래 자리'를 다시 재서 목표를 갱신한다.
   addEventListener('resize', () => {
@@ -1070,93 +747,11 @@ void main() {
   </filter>
 
 
-  <!-- 위 변 -->
-  <filter id="lens-t" color-interpolation-filters="sRGB" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
-    <feImage href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%2380ff00'/%3E%3Cstop offset='1' stop-color='%23808000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' fill='url(%23g)'/%3E%3C/svg%3E" preserveAspectRatio="none" result="map"/>
-    <feDisplacementMap in="SourceGraphic" in2="map" scale="17" xChannelSelector="R" yChannelSelector="G"/>
-  </filter>
-  <!-- 아래 변 -->
-  <filter id="lens-b" color-interpolation-filters="sRGB" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
-    <feImage href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='1' x2='0' y2='0'%3E%3Cstop offset='0' stop-color='%23800000'/%3E%3Cstop offset='1' stop-color='%23808000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' fill='url(%23g)'/%3E%3C/svg%3E" preserveAspectRatio="none" result="map"/>
-    <feDisplacementMap in="SourceGraphic" in2="map" scale="17" xChannelSelector="R" yChannelSelector="G"/>
-  </filter>
-  <!-- 왼쪽 변 -->
-  <filter id="lens-l" color-interpolation-filters="sRGB" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
-    <feImage href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23ff8000'/%3E%3Cstop offset='1' stop-color='%23808000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' fill='url(%23g)'/%3E%3C/svg%3E" preserveAspectRatio="none" result="map"/>
-    <feDisplacementMap in="SourceGraphic" in2="map" scale="17" xChannelSelector="R" yChannelSelector="G"/>
-  </filter>
-  <!-- 오른쪽 변 -->
-  <filter id="lens-r" color-interpolation-filters="sRGB" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
-    <feImage href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='1' y1='0' x2='0' y2='0'%3E%3Cstop offset='0' stop-color='%23008000'/%3E%3Cstop offset='1' stop-color='%23808000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' fill='url(%23g)'/%3E%3C/svg%3E" preserveAspectRatio="none" result="map"/>
-    <feDisplacementMap in="SourceGraphic" in2="map" scale="17" xChannelSelector="R" yChannelSelector="G"/>
-  </filter>
 </svg>
 
 <footer>Copyright © Jiwon Shin 2026</footer>
 
-<script>
-  const cards = [...document.querySelectorAll('.card')];
 
-  // 패널 높이: 닫힘은 0, 열림은 콘텐츠 높이(px)로 애니메이션한 뒤 auto 로 넘긴다.
-  // auto 로 넘기는 게 핵심 — 열린 상태에서 창 너비가 바뀌어 줄바꿈이 늘어나도
-  // 높이가 자동으로 따라가므로 내용이 잘리지 않는다.
-  const closeCard = card => {
-    const panel = card.querySelector('.panel');
-    card.querySelector('.head').setAttribute('aria-expanded', 'false');
-    if (!card.classList.contains('open')) return;
-    panel.style.height = panel.scrollHeight + 'px';  // auto → 실제 px 로 확정하고
-    void panel.offsetHeight;                          // flush 한 뒤
-    card.classList.remove('open');
-    panel.style.height = '0px';                       // px → 0 으로 애니메이션
-  };
-
-  const openCard = (card, head) => {
-    const panel = card.querySelector('.panel');
-    card.classList.add('open');
-    panel.style.height = panel.scrollHeight + 'px';   // 0 → px 로 애니메이션
-    head.setAttribute('aria-expanded', 'true');
-  };
-
-  cards.forEach(card => {
-    const head = card.querySelector('.head');
-    const panel = card.querySelector('.panel');
-    panel.addEventListener('transitionend', e => {
-      // 열림 전환이 끝나면 이후 리플로우를 따라가도록 auto 로 넘긴다
-      if (e.propertyName === 'height' && card.classList.contains('open')) {
-        panel.style.height = 'auto';
-      }
-    });
-    head.addEventListener('click', () => {
-      const wasOpen = card.classList.contains('open');
-      cards.forEach(closeCard);
-      if (!wasOpen) openCard(card, head);
-    });
-  });
-</script>
-
-<script>
-  // LP 크레이트: 데스크톱은 CSS :hover 로 쏙. 터치 기기는 자동 순환으로 훑어 보여주다가,
-  // 사용자가 직접 하나를 고르면 그 뒤로는 순수 수동 모드 — 고른 것만 튀어오르고 나머지는 대기,
-  // 같은 걸 다시 누르면 제자리로.
-  document.querySelectorAll('.crate').forEach(crate => {
-    const cards = [...crate.querySelectorAll('img')];
-    const touch = window.matchMedia('(hover: none)').matches;
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let idx = -1, timer = null, manual = false;
-    const show = i => cards.forEach((c, j) => c.classList.toggle('active', j === i));
-    const cycle = () => { idx = (idx + 1) % cards.length; show(idx); };
-    const start = () => { if (touch && !reduce && !manual && !timer) timer = setInterval(cycle, 1150); };
-    const stop  = () => { if (timer) { clearInterval(timer); timer = null; } };
-    if (touch) {
-      cards.forEach((c, i) => c.addEventListener('click', () => {
-        manual = true; stop();               // 수동 선택 시작 — 자동 순환은 다시 켜지지 않음
-        const was = c.classList.contains('active');
-        show(was ? -1 : i); idx = was ? -1 : i;  // 이미 튀어나온 걸 다시 누르면 제자리로
-      }));
-      cycle(); start();
-    }
-  });
-</script>
 
 <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-hidden="true">
   <button class="lb-close" id="lbClose" aria-label="Close photo viewer">&times;</button>

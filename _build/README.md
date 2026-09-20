@@ -5,7 +5,7 @@ inlined as base64, so it deploys with no other assets). Don't hand-edit it —
 edit the source here and rebuild.
 
 ## Files
-- `mockup_b_template.html` — the real editable source (HTML/CSS/JS with `{{PLACEHOLDER}}` tokens).
+- `mockup_b_template.html` — the real editable source (HTML/CSS/JS with `{{PLACEHOLDER}}` tokens). Structure: wallpaper → macOS-style dock (5 app icons) → on click the dock drops to the bottom and becomes WebGL glass, and that section's window (`.win`, Apple grouped-inset lists) zooms open above it.
 - `build.py` — injects every placeholder and writes `../index.html`.
 - `assets.json` — base64 for logos, posters, screenshots, the aprèsdocx wordmark, etc.
 - `wp_bleu.b64.txt` / `wp_vert.b64.txt` / `wp_silver.b64.txt` — the three background wallpapers (base64 JPEG).
