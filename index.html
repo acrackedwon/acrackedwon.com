@@ -585,8 +585,11 @@ void main() {
   let padFrom = 0, radFrom = 0, padTo = 0, radTo = 0;
 
   // q: 크기 트윈(항상 0→1, 방향 무관). 시작 시점의 크기에서 호버 없는 기본 크기로 간다.
+  // 창 열림 예약: 독의 윗변이 창의 아랫변을 지나는 순간(e >= gate)에 열린다.
+  let pendingOpen = null;
   const paint = (e, q) => {
     cur = e;
+    if (pendingOpen !== null && e >= pendingOpen) { pendingOpen = null; win.classList.add('open'); }
     const a = 1 - e;
     wrap.style.transform = e ? 'translateY(' + (targetPx * e).toFixed(3) + 'px)' : '';
     wrap.style.boxShadow = e ? '0 6px 6px rgba(0,0,0,' + (0.2 * a).toFixed(3) + '), 0 0 20px rgba(0,0,0,' + (0.1 * a).toFixed(3) + ')' : '';
@@ -707,7 +710,19 @@ void main() {
       // 눌린 아이콘에서 확대되어 나오도록 transform-origin 을 그 아이콘 x 에 맞춘다
       const wr = win.getBoundingClientRect(), br = btn.getBoundingClientRect();
       win.style.transformOrigin = Math.round(br.left + br.width / 2 - wr.left) + 'px 100%';
-      requestAnimationFrame(() => requestAnimationFrame(() => win.classList.add('open')));
+      // 독이 내려가는 중이면, 독 윗변이 창 아랫변 아래로 빠지는 진행도에서 연다.
+      //   독 윗변(e) = geom.cy - geom.h/2 + targetPx*e  ≥  창 아랫변 = innerHeight - --win-bottom
+      // 창은 독의 도착 자리 16px 위에 앉으므로 게이트는 보통 0.9x — 거의 다 내려온 뒤다.
+      const morphing = gl && texReady && geom && cur < 1 && targetPx > 0;
+      if (morphing) {
+        const winBottomY = innerHeight - parseFloat(win.style.getPropertyValue('--win-bottom'));
+        const dockTop0 = geom.cy - geom.h / 2;
+        const gate = (winBottomY - dockTop0) / targetPx;
+        if (gate > cur) { pendingOpen = Math.min(1, gate); }
+        else requestAnimationFrame(() => requestAnimationFrame(() => win.classList.add('open')));
+      } else {
+        requestAnimationFrame(() => requestAnimationFrame(() => win.classList.add('open')));
+      }
     } else if (switching) {
       // 내용 교체: 짧은 페이드
       winBody.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
@@ -718,6 +733,7 @@ void main() {
 
   const closeWin = () => {
     if (win.hidden) return;
+    pendingOpen = null;
     win.classList.remove('open');
     showSel(false);
     apps.forEach(b => b.setAttribute('aria-pressed', 'false'));
