@@ -503,7 +503,6 @@ float sdRound(vec2 p, vec2 b, float r) {
 void main() {
   vec2 fc = gl_FragCoord.xy;
   vec2 uv = fc / uRes;
-  vec4 base = bg(uv);
 
   // 원본은 초타원 |x|^6 + |y|^6 을 쓰지만, 그건 CSS 의 border-radius 둥근 사각형과
   // 실루엣이 다르다(변이 부풀고 모서리 곡률이 짧은 변에 끌려간다). CSS 레이어가
@@ -521,7 +520,7 @@ void main() {
             - clamp((1.00 - rb * 1.10) *  2.0, 0.0, 1.0);
 
   float transition = smoothstep(0.0, 1.0, rb1 + rb2);
-  vec4 col = base;
+  vec4 col = vec4(0.0);
 
   if (transition > 0.0) {
     vec2 lens = (uv - 0.5) * (1.0 - rb * 0.5) + 0.5;   // 테두리로 갈수록 강해지는 굴절
@@ -538,15 +537,22 @@ void main() {
     vec2 m2 = (fc - uRect.xy) / uRes;
     float grad = clamp((clamp(m2.y, 0.0, 0.2) + 0.1) / 2.0, 0.0, 1.0)
                + clamp((clamp(-m2.y, -1000.0, 0.2) * rb3 + 0.1) / 2.0, 0.0, 1.0);
-    vec4 lit = clamp(acc + vec4(rb1) * grad + vec4(rb2) * 0.3, 0.0, 1.0);
-    col = mix(base, lit, transition);
+    col = clamp(acc + vec4(rb1) * grad + vec4(rb2) * 0.3, 0.0, 1.0);
   }
 
-  // 알파로 내보낸다. 캔버스 아래에는 body::before 가 같은 배경을 같은 cover 로 깔고
-  // 있으므로, col*uMix + base*(1-uMix) = mix(base, col, uMix) 로 결과가 같다.
-  // 대신 렌즈 주변만 그려도 나머지가 비어 보이지 않는다 — 전체화면을 셰이딩할 이유가
-  // 사라진다(이게 프레임 드롭의 원인이었다).
-  gl_FragColor = vec4(col.rgb, uMix);
+  // 렌즈가 덮는 만큼만 알파로 내보낸다. 캔버스 아래에는 body::before 가 같은 배경을
+  // 깔고 있으므로 합성 결과는 col*a + base*(1-a) = mix(base, col, a) — 예전에
+  // 셰이더가 직접 계산하던 값 그대로다. 대신 렌즈 밖(transition = 0)은 알파가 0이라
+  // 배경을 아예 건드리지 않는다. 전체화면을 셰이딩할 이유가 사라진다(프레임 드롭의
+  // 원인이었다), 그리고 캔버스의 배경 재현이 CSS 와 1픽셀이라도 어긋나도 렌즈 밖에는
+  // 티가 나지 않는다.
+  //
+  // 반드시 '프리멀티플라이드'로 낸다(rgb 에 알파를 미리 곱한다). 스트레이트 알파로
+  // 내보내면 합성기가 그걸 프리멀티플라이드로 읽는 순간 col.rgb + base*(1-a) 가
+  // 되어 배경 위에 배경이 한 번 더 더해지고, 독 자리에 허연 사각형이 뜬다.
+  // 프리멀티플라이드가 캔버스의 기본값이라 어느 브라우저에서도 해석이 갈리지 않는다.
+  float a = transition * uMix;
+  gl_FragColor = vec4(col.rgb * a, a);
 }
 </script>
 
@@ -831,7 +837,7 @@ void main() {
   let _footer;
   const footer = () => (_footer !== undefined ? _footer : (_footer = document.querySelector('footer')));
   const canvas = document.getElementById('glassgl');
-  const glOpts = { alpha: true, premultipliedAlpha: false, antialias: false, depth: false, stencil: false };
+  const glOpts = { alpha: true, premultipliedAlpha: true, antialias: false, depth: false, stencil: false };
   const gl     = canvas.getContext('webgl', glOpts) || canvas.getContext('experimental-webgl', glOpts);
 
   const DURATION = 820;
