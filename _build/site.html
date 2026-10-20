@@ -57,21 +57,49 @@
   a { color: inherit; }
   img { display: block; }
 
-  .page { width: min(1080px, 100%); margin: 0 auto; padding: 0 20px 140px; }
+  /* ---------------- layout ----------------
+     Two parts: the stage, which only ever holds the figure, and the page, which
+     holds everything else.
+       PC (≥900px): the stage is a sticky left column the height of the viewport,
+                    so the figure never moves while the right column scrolls.
+       Mobile:      the stage is pinned to the bottom-right corner, small, just
+                    above the tab bar — the figure rides along as a little bot. */
+  .page { width: min(820px, 100%); margin: 0 auto; padding: 0 20px 150px; }
+  .stage { z-index: 15; }
+  .hero-card { width: min(300px, 76vw); }
+  @media (min-width: 900px) {
+    :root { --stage-w: clamp(340px, 40vw, 560px); }
+    .layout { display: grid; grid-template-columns: var(--stage-w) minmax(0, 1fr); }
+    .stage { position: sticky; top: 0; height: 100vh; height: 100svh; display: grid; place-items: center; }
+    .hero-card { width: min(360px, calc(var(--stage-w) - 72px)); }
+    .page { padding: 0 clamp(24px, 4vw, 56px) 150px; }
+  }
+  @media (max-width: 899px) {
+    .stage {
+      position: fixed; width: 92px; pointer-events: none;
+      right: max(8px, env(safe-area-inset-right));
+      bottom: calc(max(18px, env(safe-area-inset-bottom)) + 52px);
+    }
+    .hero-card { width: 100%; pointer-events: auto; }
+  }
 
-  /* ---------------- hero ---------------- */
+  /* ---------------- hero (first screen of the page) ---------------- */
   .hero {
-    min-height: min(100svh, 940px);
-    display: grid; grid-template-columns: minmax(240px, 360px) minmax(0, 1fr);
-    align-items: center; gap: clamp(32px, 6vw, 72px);
-    padding: clamp(40px, 8vh, 96px) 0 clamp(48px, 8vh, 96px);
+    min-height: 100vh; min-height: 100svh;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: clamp(48px, 8vh, 96px) 0;
+  }
+  @media (max-width: 899px) {
+    .hero { align-items: center; text-align: center; }
+    .lede { margin-left: auto; margin-right: auto; }
+    .facts, .actions { justify-content: center; }
   }
   .eyebrow {
     margin: 0 0 14px; font-size: 13px; font-weight: 600;
     letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2);
   }
   .display {
-    margin: 0; font-size: clamp(64px, 10.5vw, 136px); font-weight: 600;
+    margin: 0; font-size: clamp(64px, 8.4vw, 128px); font-weight: 600;
     line-height: .9; letter-spacing: -.035em; text-shadow: var(--emboss);
   }
   .lede {
@@ -128,9 +156,9 @@
 
   /* ---------------- intro ----------------
      The site opens on the figure alone, centred and facing you. Clicking it
-     slides the card into its place in the hero (FLIP: it starts translated to
-     the viewport centre and transitions back to none) while the figure turns
-     to three-quarters, then the wordmark, the sections and the tab bar arrive. */
+     sends the card to its home on the stage (FLIP: it starts translated — and on
+     mobile scaled up — to the viewport centre, and transitions back to none)
+     while the figure turns, then the wordmark, sections and tab bar arrive. */
   html.intro, html.intro body { overflow: hidden; }
   .hero-card { transition: transform .9s var(--ease-out); }
   .hero-text { transition: opacity .7s ease .2s, transform .9s var(--ease-out) .14s; }
@@ -139,7 +167,7 @@
   html.intro .sec, html.intro footer { opacity: 0; visibility: hidden; }
   .tabbar { transition: opacity .5s ease .5s, transform .7s var(--ease-out) .5s; }
   html.intro .tabbar { opacity: 0; transform: translateX(-50%) translateY(24px); }
-  @media (max-width: 719px) { html.intro .hero-text { transform: translateY(24px); } }
+  @media (max-width: 899px) { html.intro .hero-text { transform: translateY(24px); } }
   @media (prefers-reduced-motion: reduce) {
     .hero-card, .hero-text, .sec, footer, .tabbar { transition: none; }
   }
@@ -236,10 +264,6 @@
   footer a { text-decoration: underline; text-underline-offset: 2px; }
 
   @media (max-width: 719px) {
-    .hero { grid-template-columns: 1fr; justify-items: center; text-align: center; min-height: 0; padding-top: 36px; gap: 40px; }
-    .hero-card { width: min(300px, 76vw); }
-    .lede { margin-left: auto; margin-right: auto; }
-    .facts, .actions { justify-content: center; }
     .split { flex-direction: column; align-items: flex-start; }
     .split .cover { width: 100%; max-width: 240px; }
     .tile { padding: 20px; }
@@ -276,6 +300,7 @@
   .tab:active img { transform: scale(.94); }
   .tab:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
   @media (prefers-reduced-motion: reduce) { .bubble { transition: none; } }
+  @media (min-width: 900px) { .tabbar { left: calc(var(--stage-w) + (100vw - var(--stage-w)) / 2); } }
 
   /* ---------------- photo viewer ---------------- */
   .lb { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: clamp(20px, 6vw, 64px);
@@ -315,10 +340,10 @@
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
 </svg>
 
-<div class="page">
+<div class="layout">
 
-  <!-- ============ hero ============ -->
-  <section class="hero" id="intro" data-sec="intro">
+<!-- ============ stage: the figure, and only the figure ============ -->
+<aside class="stage" aria-label="Jiwon’s minifigure">
     <div class="hero-card">
       <button class="tilt" id="tilt" type="button" aria-label="Jiwon Shin — click to say hello">
         <span class="tilt-card" id="tilt-card">
@@ -328,6 +353,12 @@
         </span>
       </button>
     </div>
+</aside>
+
+<main class="page">
+
+  <!-- ============ hero ============ -->
+  <section class="hero" id="intro" data-sec="intro">
     <div class="hero-text">
       <p class="eyebrow">Designer &amp; Operator · Seoul</p>
       <h1 class="display">Jiwon<br>Shin</h1>
@@ -351,19 +382,20 @@
       const root = document.documentElement;
       if (!root.classList.contains('intro')) return;
       const card = document.querySelector('.hero-card');
-      const quiet = [document.querySelector('.hero-text')];
       const place = () => {
         if (!root.classList.contains('intro')) return;
         card.style.transition = 'none'; card.style.transform = '';
         const r = card.getBoundingClientRect();
+        // centred, and on mobile blown up from the corner bot to intro size
+        const introW = Math.min(300, innerWidth * 0.76);
+        const sc = r.width < introW ? introW / r.width : 1;
         const dx = innerWidth / 2 - (r.left + r.width / 2), dy = innerHeight / 2 - (r.top + r.height / 2);
-        card.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
+        card.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) scale(' + sc.toFixed(4) + ')';
         card.offsetHeight; card.style.transition = '';
       };
       scrollTo(0, 0);
       place();
       addEventListener('resize', place);
-      window.__intro = { place, quiet };
     })();
   </script>
 
@@ -493,6 +525,7 @@
     <span>© 2026 Jiwon Shin</span>
     <span>Minifigure assembled from <a href="https://www.ldraw.org" target="_blank" rel="noopener">LDraw.org</a> parts (CC BY 2.0), rendered with three.js. LEGO® is a trademark of the LEGO Group, which does not sponsor or endorse this site.</span>
   </footer>
+</main>
 </div>
 
 <nav class="tabbar" id="tabbar" aria-label="Sections">
@@ -715,6 +748,9 @@ async function boot() {
   fig.scale.setScalar(25);
   const head = fig.getObjectByName('Head');
   const headRest = head ? head.rotation.y : 0;
+  const armR = fig.getObjectByName('Arm_R'), armL = fig.getObjectByName('Arm_L');
+  const armRest = { R: armR ? armR.rotation.x : 0, L: armL ? armL.rotation.x : 0 };
+  const figRestY = fig.position.y;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setClearColor(0x000000, 0);
@@ -751,23 +787,48 @@ async function boot() {
   new IntersectionObserver(es => { visible = es[0].isIntersecting; if (visible) state.wake(); }).observe(card);
 
   // Driven from the tilt card's own loop: one rAF for card and figure.
+  /* Mobile mini-bot: once it has settled into its corner it never quite stands
+     still — a slow look-around, a little bob, arms swinging, and every so often
+     a wave. Layered sines at unrelated rates so the loop never visibly repeats.
+     PC keeps the figure still apart from the tilt. */
+  const botMode = matchMedia('(max-width: 899px)');
+  let t = 0, nextWave = 8;
+
   state.onFrame = dt => {
     if (!visible) return false;
     resize();
-    fig.rotation.y = BASE_YAW * state.stage + state.x * 0.32;   // 0 = facing you
+    const sec = (dt * 16.67) / 1000;
+    const bot = botMode.matches && !reduced && state.stage >= 1;
+    // Face the content: right on PC (figure on the left), left on mobile (figure in the right corner).
+    const side = botMode.matches ? -1 : 1;
+    let yaw = BASE_YAW * side * state.stage, headYaw = 0, bob = 0, swing = 0;
+    if (bot) {
+      t += sec;
+      yaw += Math.sin(t * 0.8) * 0.36 + Math.sin(t * 0.31 + 2) * 0.14;
+      headYaw = Math.sin(t * 1.15 + 1) * 0.34;
+      bob = (Math.sin(t * 2.3) + 1) * 0.009;
+      swing = Math.sin(t * 2.3) * 0.16;
+      if (t > nextWave && !waving) { state.wave(); nextWave = t + 9 + Math.random() * 6; }
+    }
+    fig.rotation.y = yaw + state.x * 0.32;   // 0 = facing you
     fig.rotation.x = state.y * 0.06;
-    if (head) head.rotation.y = headRest + state.x * 0.45;
-    if (waving) mixer.update((dt * 16.67) / 1000);
+    fig.position.y = figRestY + bob;
+    if (head) head.rotation.y = headRest + headYaw + state.x * 0.45;
+    if (armR) armR.rotation.x = armRest.R + swing;    // the clip overrides these while waving
+    if (armL) armL.rotation.x = armRest.L - swing;
+    if (waving) mixer.update(sec);
     renderer.render(scene, cam);
-    return waving;
+    return waving || bot;
   };
+  botMode.addEventListener('change', () => state.wake());
   state.wave = () => {
-    if (!wave || reduced) return;
+    if (!wave || reduced || waving) return;
     wave.reset().play(); waving = true; state.wake();
   };
 
-  fig.rotation.y = BASE_YAW * state.stage;
+  fig.rotation.y = BASE_YAW * (matchMedia('(max-width: 899px)').matches ? -1 : 1) * state.stage;
   resize(); renderer.render(scene, cam);
+  if (state.stage >= 1) state.wake();   // deep link: no intro, start the bot straight away
   card.classList.add('live');
 }
 
