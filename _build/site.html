@@ -1,0 +1,723 @@
+<title>Jiwon Shin</title>
+<style>
+  /* ============================================================
+     acrackedwon.com — v3
+     Hero: a tilt card holding a live 3D minifigure, beside a large
+     rounded wordmark. Below, one section per subject as a bento of
+     glass tiles. A floating glass tab bar with a sliding white
+     selection bubble tracks where you are.
+     ============================================================ */
+
+  /* SF Pro Rounded is only reachable through ui-rounded on Apple
+     platforms; Roboto Round (Apache-2.0) is the embedded fallback. */
+  @font-face {
+    font-family: 'Roboto Round';
+    src: url("data:font/woff2;base64,{{ROBOTO_ROUND}}") format('woff2');
+    font-weight: 400 800; font-style: normal; font-display: swap;
+  }
+
+  :root {
+    --wp: url("data:image/jpeg;base64,{{WP_BLEU}}");
+    --ink: #0a1d3f; --ink-2: rgba(10, 29, 63, .66); --ink-3: rgba(10, 29, 63, .42);
+    --accent: #2f5bd9;
+    /* studio sweep behind the minifigure, tuned per mood */
+    --studio: radial-gradient(120% 92% at 50% 16%, #8ba6ec 0%, #4565c9 52%, #22398a 100%);
+
+    --glass: hsla(0, 0%, 100%, .24);
+    --glass-hi: hsla(0, 0%, 100%, .36);
+    --rim: hsla(0, 0%, 100%, .46);
+    --r-lg: 28px; --r-md: 18px; --r-sm: 12px;
+    --ease-out: cubic-bezier(.2, .9, .3, 1);
+    --spring: cubic-bezier(.34, 1.4, .5, 1);
+    --emboss: 1px 1px 2px hsla(0, 0%, 100%, .3), -1px -1px 0 #000;
+  }
+  html.wp-green {
+    --wp: url("data:image/jpeg;base64,{{WP_VERT}}");
+    --ink: #142f18; --ink-2: rgba(20, 47, 24, .68); --ink-3: rgba(20, 47, 24, .44); --accent: #2e7d3f;
+    --studio: radial-gradient(120% 92% at 50% 16%, #b3cf96 0%, #648a4b 52%, #34502a 100%);
+  }
+  html.wp-silver {
+    --wp: url("data:image/jpeg;base64,{{WP_SILVER}}");
+    --ink: #1d1f23; --ink-2: rgba(29, 31, 35, .66); --ink-3: rgba(29, 31, 35, .42); --accent: #4a5060;
+    --studio: radial-gradient(120% 92% at 50% 16%, #e2e5ea 0%, #a2a7b0 52%, #5d626b 100%);
+  }
+
+  * { box-sizing: border-box; }
+  html { background: #0b0f14; scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; color: var(--ink); isolation: isolate;
+    font-family: ui-rounded, "SF Pro Rounded", "Roboto Round", -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", sans-serif;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1;
+    background: var(--wp) center / cover no-repeat;
+  }
+  a { color: inherit; }
+  img { display: block; }
+
+  .page { width: min(1080px, 100%); margin: 0 auto; padding: 0 20px 140px; }
+
+  /* ---------------- hero ---------------- */
+  .hero {
+    min-height: min(100svh, 940px);
+    display: grid; grid-template-columns: minmax(240px, 360px) minmax(0, 1fr);
+    align-items: center; gap: clamp(32px, 6vw, 72px);
+    padding: clamp(40px, 8vh, 96px) 0 clamp(48px, 8vh, 96px);
+  }
+  .eyebrow {
+    margin: 0 0 14px; font-size: 13px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2);
+  }
+  .display {
+    margin: 0; font-size: clamp(64px, 10.5vw, 136px); font-weight: 600;
+    line-height: .9; letter-spacing: -.035em; text-shadow: var(--emboss);
+  }
+  .lede {
+    margin: 22px 0 0; max-width: 30ch;
+    font-size: clamp(19px, 2.1vw, 24px); font-weight: 500; line-height: 1.35; letter-spacing: -.015em;
+  }
+  .facts { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0 0; padding: 0; list-style: none; }
+  .facts a {
+    display: inline-flex; align-items: baseline; gap: 6px; text-decoration: none;
+    padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 500;
+    background: var(--glass); border: 1px solid var(--rim);
+    -webkit-backdrop-filter: blur(14px) saturate(1.6); backdrop-filter: blur(14px) saturate(1.6);
+    box-shadow: inset 0 1px 0 hsla(0, 0%, 100%, .5);
+    transition: background .2s ease, transform .3s var(--spring);
+  }
+  .facts a span { color: var(--ink-2); font-weight: 400; }
+  .facts a:hover { background: var(--glass-hi); transform: translateY(-1px); }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+    height: 44px; padding: 0 18px 0 14px; border-radius: 999px; font-size: 15px; font-weight: 600;
+    transition: transform .3s var(--spring), background .2s ease;
+  }
+  .btn .s { width: 18px; height: 18px; }
+  .btn.primary { background: var(--ink); color: #fff; box-shadow: 0 8px 22px rgba(0, 0, 0, .22); }
+  .btn.ghost { background: var(--glass); border: 1px solid var(--rim);
+    -webkit-backdrop-filter: blur(14px) saturate(1.6); backdrop-filter: blur(14px) saturate(1.6); }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:active { transform: translateY(0) scale(.98); }
+
+  /* ---------------- tilt card (after Bencho's Tilt card, MIT) ----------------
+     The fixed frame owns perspective and pointer measurement; rotation,
+     light and shadow are all written from one spring position. */
+  .tilt {
+    all: unset; box-sizing: border-box; position: relative; display: block;
+    width: 100%; aspect-ratio: 13 / 16; border-radius: var(--r-lg);
+    perspective: 800px; cursor: pointer; touch-action: pan-y;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tilt:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; }
+  .tilt-card {
+    position: absolute; inset: 0; border-radius: inherit; overflow: hidden;
+    background: var(--studio); pointer-events: none;
+    box-shadow: 0 20px 44px -8px rgba(0, 0, 0, .22);
+  }
+  /* Glass edge on the card itself, so it belongs to the same material family. */
+  .tilt-card::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    box-shadow: inset 0 1px 0 hsla(0, 0%, 100%, .55), inset 0 0 0 1px hsla(0, 0%, 100%, .22);
+  }
+  .tilt-floor {
+    position: absolute; left: 50%; bottom: 9.5%; width: 46%; height: 6%;
+    transform: translateX(-50%); border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(0, 0, 0, .34), rgba(0, 0, 0, 0));
+    filter: blur(2px);
+  }
+  .tilt-poster, .tilt-gl { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .tilt-gl { opacity: 0; transition: opacity .5s ease; }
+  .tilt.live .tilt-gl { opacity: 1; }
+  .tilt.live .tilt-poster { opacity: 0; transition: opacity .5s ease; }
+  .tilt-cap {
+    position: absolute; left: 18px; right: 18px; top: 16px;
+    display: flex; justify-content: space-between;
+    font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    color: hsla(0, 0%, 100%, .78);
+  }
+  .tilt-sheen { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
+  .tilt-hint {
+    position: absolute; left: 0; right: 0; bottom: -30px; text-align: center;
+    font-size: 12px; color: var(--ink-3); pointer-events: none;
+  }
+
+  /* ---------------- sections ---------------- */
+  .sec { padding-top: clamp(56px, 9vh, 96px); scroll-margin-top: 8px; }
+  .sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 4px 22px; }
+  .sec-h h2 {
+    margin: 0; font-size: clamp(44px, 7vw, 84px); font-weight: 600;
+    line-height: .95; letter-spacing: -.03em; text-shadow: var(--emboss);
+  }
+  .sec-h .fr { font-size: 17px; font-weight: 500; color: var(--ink-2); }
+
+  .grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+  .tile {
+    position: relative; grid-column: span 6; min-width: 0;
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 22px 24px; border-radius: var(--r-lg);
+    color: inherit; text-decoration: none;
+    background: var(--glass); border: 1px solid var(--rim);
+    -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
+    box-shadow: inset 0 1px 0 hsla(0, 0%, 100%, .5), 0 12px 30px rgba(4, 11, 36, .12);
+  }
+  @media (min-width: 720px) {
+    .c2 { grid-column: span 2; } .c3 { grid-column: span 3; } .c4 { grid-column: span 4; }
+  }
+  a.tile { transition: background .2s ease, transform .35s var(--spring); }
+  a.tile:hover { background: var(--glass-hi); transform: translateY(-2px); }
+  a.tile:active { transform: translateY(0) scale(.99); }
+  a.tile:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+  /* reveal on scroll — one staggered spring per tile */
+  .js .tile { opacity: 0; transform: translateY(18px) scale(.98); }
+  .js .tile.in { opacity: 1; transform: none;
+    transition: opacity .5s ease, transform .6s var(--spring), background .2s ease;
+    transition-delay: calc(var(--i, 0) * 60ms), calc(var(--i, 0) * 60ms), 0s; }
+  .js a.tile.in:hover { transform: translateY(-2px); transition-delay: 0s; }
+  @media (prefers-reduced-motion: reduce) { .js .tile { opacity: 1; transform: none; } }
+
+  .tile .k { font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2); }
+  .tile h3 { margin: 0; font-size: 22px; font-weight: 500; line-height: 1.2; letter-spacing: -.02em; overflow-wrap: anywhere; }
+  .tile p { margin: 0; font-size: 15px; line-height: 1.4; color: var(--ink-2); }
+  .tile .m { font-size: 13px; color: var(--ink-3); }
+  .tile.row { flex-direction: row; align-items: center; gap: 18px; }
+  .tile.row > .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+  .go {
+    flex: none; width: 36px; height: 36px; border-radius: 50%; margin-left: auto;
+    display: grid; place-items: center; background: hsla(0, 0%, 100%, .4);
+    transition: transform .35s var(--spring);
+  }
+  .go .s { width: 16px; height: 16px; }
+  a.tile:hover .go { transform: translate(2px, -2px); }
+  .tile.top .go { position: absolute; top: 18px; right: 18px; }
+  .lnk { display: inline-flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 10px;
+    font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; }
+  .lnk .s { width: 15px; height: 15px; }
+  .lnk:hover { text-decoration: underline; }
+  .lnks { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+  .s { display: block; flex: none; }
+
+  .thumb { flex: none; width: 64px; height: 64px; border-radius: 14px; object-fit: cover; background: #fff; }
+  .thumb.tall { height: 80px; object-position: top; border-radius: 10px; }
+  .thumb.logo { padding: 4px; }
+  .media { width: 100%; max-width: 168px; border-radius: 14px; margin-bottom: 8px; box-shadow: 0 6px 16px rgba(0, 0, 0, .14); }
+  .wordmark { width: 128px; height: auto; margin: 2px 0 10px; }
+  .franco { width: 56px; height: 56px; flex: none; }
+  .ba { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; color: var(--ink-3); }
+  .ba img { width: 72px; height: 72px; border-radius: 16px; background: #fff; object-fit: cover; }
+  .ba .s { width: 18px; height: 18px; }
+  .split { flex-direction: row; align-items: center; gap: 24px; }
+  .split > .body { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .split .cover { width: 168px; flex: none; border-radius: 16px; box-shadow: 0 8px 22px rgba(0, 0, 0, .16); }
+
+  /* PARLÉ posters — a snap-scrolling strip that bleeds to the tile edges */
+  .strip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
+    margin: 6px -24px 10px; padding: 4px 24px 8px; scrollbar-width: none; }
+  .strip::-webkit-scrollbar { display: none; }
+  .strip img { flex: none; width: 104px; height: 130px; object-fit: cover; object-position: top;
+    border-radius: 10px; background: #fff; scroll-snap-align: start; cursor: zoom-in;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .2); transition: transform .3s var(--spring); }
+  .strip img:hover { transform: translateY(-3px); }
+  .mini { display: flex; gap: 12px; align-items: flex-start; padding-top: 12px; margin-top: 6px;
+    border-top: 1px solid hsla(0, 0%, 100%, .4); }
+  .mini img { width: 44px; height: 55px; border-radius: 7px; object-fit: cover; object-position: top; flex: none; cursor: zoom-in; }
+  .mini b { display: block; font-size: 14px; font-weight: 600; }
+  .mini span { display: block; font-size: 13px; line-height: 1.35; color: var(--ink-2); }
+
+  .badge { flex: none; width: 52px; height: 52px; border-radius: 15px; display: grid; place-items: center;
+    background: var(--ink); color: #fff; }
+  .badge .s { width: 24px; height: 24px; }
+  .hello { margin: 0 4px 22px; font-size: clamp(19px, 2.2vw, 24px); font-weight: 500; letter-spacing: -.015em; }
+
+  footer { margin: 64px 4px 0; display: grid; gap: 6px; font-size: 12px; line-height: 1.5; color: var(--ink-2); }
+  footer a { text-decoration: underline; text-underline-offset: 2px; }
+
+  @media (max-width: 719px) {
+    .hero { grid-template-columns: 1fr; justify-items: center; text-align: center; min-height: 0; padding-top: 36px; gap: 40px; }
+    .hero-card { width: min(300px, 76vw); }
+    .lede { margin-left: auto; margin-right: auto; }
+    .facts, .actions { justify-content: center; }
+    .split { flex-direction: column; align-items: flex-start; }
+    .split .cover { width: 100%; max-width: 240px; }
+    .tile { padding: 20px; }
+    .tile.row { gap: 14px; }
+    .tile h3 { font-size: 20px; }
+    .strip { margin: 6px -20px 10px; padding: 4px 20px 8px; }
+  }
+
+  /* ---------------- tab bar ----------------
+     Floating glass pill. The white bubble slides to the section in view.
+     No labels — the icons carry it. */
+  .tabbar {
+    position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); z-index: 20;
+    transform: translateX(-50%);
+    display: flex; gap: 4px; padding: 6px; border-radius: 999px;
+    background: hsla(0, 0%, 100%, .26); border: 1px solid hsla(0, 0%, 100%, .5);
+    -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
+    box-shadow: inset 0 1px 0 hsla(0, 0%, 100%, .6), 0 14px 40px rgba(0, 0, 0, .26);
+  }
+  .bubble {
+    position: absolute; top: 6px; left: 0; height: calc(100% - 12px); width: 0; border-radius: 999px;
+    background: linear-gradient(180deg, hsla(0, 0%, 100%, .7), hsla(0, 0%, 100%, .52));
+    box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px hsla(0, 0%, 100%, .5), 0 4px 14px rgba(0, 0, 0, .14);
+    transition: transform .42s var(--ease-out), width .42s var(--ease-out);
+    pointer-events: none;
+  }
+  .tab {
+    all: unset; position: relative; z-index: 1; display: grid; place-items: center;
+    width: 52px; height: 46px; border-radius: 999px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab img { width: 32px; height: 32px; transition: transform .3s var(--spring); }
+  .tab:hover img { transform: scale(1.06); }
+  .tab:active img { transform: scale(.94); }
+  .tab:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+  @media (prefers-reduced-motion: reduce) { .bubble { transition: none; } }
+
+  /* ---------------- photo viewer ---------------- */
+  .lb { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: clamp(20px, 6vw, 64px);
+    background: rgba(10, 12, 16, .72); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+  .lb.open { opacity: 1; pointer-events: auto; }
+  .lb img { max-width: min(92vw, 760px); max-height: 86vh; border-radius: 18px; background: #fff;
+    box-shadow: 0 40px 90px rgba(0, 0, 0, .5); transform: scale(.94); transition: transform .32s var(--spring); }
+  .lb.open img { transform: none; }
+  .lb button { all: unset; position: absolute; top: 18px; right: 18px; width: 40px; height: 40px; border-radius: 50%;
+    display: grid; place-items: center; cursor: pointer; color: #fff; background: rgba(255, 255, 255, .16); }
+  .lb button .s { width: 18px; height: 18px; }
+  .zoom { cursor: zoom-in; }
+</style>
+
+<script>
+  // mood: random per load, applied before first paint
+  (function () {
+    var m = ['', 'wp-green', 'wp-silver'][Math.floor(Math.random() * 3)];
+    var c = document.documentElement.classList;
+    if (m) c.add(m);
+    c.add('js');
+  })();
+</script>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7.5 12 13l8.5-5.5"/></g></symbol>
+  <symbol id="i-ig" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none"/></g></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8a3 3 0 0 1 6 0"/></g></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+</svg>
+
+<div class="page">
+
+  <!-- ============ hero ============ -->
+  <section class="hero" id="intro" data-sec="intro">
+    <div class="hero-card">
+      <button class="tilt" id="tilt" type="button" aria-label="Jiwon’s minifigure — click to wave">
+        <span class="tilt-card" id="tilt-card">
+          <span class="tilt-floor" aria-hidden="true"></span>
+          <img class="tilt-poster" src="data:image/png;base64,{{MINIFIG_POSTER}}" alt="" draggable="false">
+          <canvas class="tilt-gl" id="tilt-gl" aria-hidden="true"></canvas>
+          <span class="tilt-cap" aria-hidden="true"><span>Jiwon Shin</span><span>Seoul</span></span>
+          <span class="tilt-sheen" id="tilt-sheen" aria-hidden="true"></span>
+        </span>
+      </button>
+    </div>
+    <div class="hero-text">
+      <p class="eyebrow">Designer &amp; Operator · Seoul</p>
+      <h1 class="display">Jiwon<br>Shin</h1>
+      <p class="lede">French major at Kyung Hee who designs, builds, and runs small brands — end&nbsp;to&nbsp;end.</p>
+      <ul class="facts">
+        <li><a href="#school">PARLÉ <span>Founder</span></a></li>
+        <li><a href="#work">On The Ground <span>GM</span></a></li>
+        <li><a href="#projects">francophones.kr <span>Now</span></a></li>
+      </ul>
+      <div class="actions">
+        <a class="btn primary" href="mailto:acrackedwon@gmail.com"><svg class="s"><use href="#i-mail"/></svg>Say bonjour</a>
+        <a class="btn ghost" href="https://instagram.com/acrackedwon" target="_blank" rel="noopener"><svg class="s"><use href="#i-ig"/></svg>acrackedwon</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ school ============ -->
+  <section class="sec" id="school" data-sec="school">
+    <header class="sec-h"><h2>School</h2><span class="fr" lang="fr">École</span></header>
+    <div class="grid">
+      <a class="tile c6 row" style="--i:0" href="https://france.khu.ac.kr/france/user/main/view.do" target="_blank" rel="noopener">
+        <div class="body"><span class="k">2022.03 –</span><h3>Kyung Hee University</h3><p>Dept. of French Language</p></div>
+        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
+      </a>
+
+      <div class="tile c4" style="--i:1">
+        <span class="k">At Kyung Hee · 2023 –</span>
+        <div class="strip" aria-label="PARLÉ posters">
+          <img class="zoom" src="{{NP1}}" alt="PARLÉ 1ère réunion poster" loading="lazy">
+          <img class="zoom" src="{{NP2}}" alt="PARLÉ wine tasting poster" loading="lazy">
+          <img class="zoom" src="{{NP3}}" alt="PARLÉ French film night poster" loading="lazy">
+          <img class="zoom" src="{{NP4}}" alt="PARLÉ goodbye party poster" loading="lazy">
+          <img class="zoom" src="{{NP5}}" alt="PARLÉ × ISC mid-term party poster" loading="lazy">
+          <img class="zoom" src="{{NP6}}" alt="PARLÉ 6ème réunion poster" loading="lazy">
+          <img class="zoom" src="{{NP7}}" alt="PARLÉ 2ème réunion poster" loading="lazy">
+          <img class="zoom" src="{{NP8}}" alt="PARLÉ 3ème réunion poster" loading="lazy">
+          <img class="zoom" src="{{NP9}}" alt="PARLÉ board-game night poster" loading="lazy">
+          <img class="zoom" src="{{NP10}}" alt="PARLÉ × SDGs rencontre poster" loading="lazy">
+        </div>
+        <h3>PARLÉ</h3>
+        <p>A French culture club at KHU. Founder &amp; President — posters, events, the whole thing.</p>
+        <a class="lnk" href="https://instagram.com/khu_parle" target="_blank" rel="noopener"><svg class="s"><use href="#i-ig"/></svg>khu_parle</a>
+      </div>
+
+      <div class="tile c2" style="--i:2">
+        <span class="k">PARLÉ ×</span>
+        <h3>ddcoréen</h3>
+        <p>Invited 고대영 — an SNS creator teaching Korean across France (TikTok 110k · YouTube 106k).</p>
+        <div class="mini"><img class="zoom" src="{{CONF}}" alt="ddcoréen guest lecture poster"><div><b>Conférence exceptionnelle</b><span>“Shouting Korea from France: learning &amp; cultural exchange in a global age” · 2025.09.23 · Zoom</span></div></div>
+        <div class="mini"><img class="zoom" src="{{LEX}}" alt="PARLÉ × ddcoréen language exchange card"><div><b>Online language exchange</b><span>Card-news series &amp; program pairing Korean &amp; French learners</span></div></div>
+        <a class="lnk" href="https://instagram.com/ddcoreen" target="_blank" rel="noopener"><svg class="s"><use href="#i-ig"/></svg>ddcoreen</a>
+      </div>
+
+      <div class="tile c6 split" style="--i:3">
+        <img class="cover zoom" src="{{LYS_CLEAN}}" alt="Château de Lys — store detail page">
+        <div class="body">
+          <span class="k">At Kyung Hee · Capstone 2025</span>
+          <h3>Château de Lys</h3>
+          <p>A rug brand, taken from design through production to a live store.</p>
+          <div class="lnks">
+            <a class="lnk" href="https://smartstore.naver.com/chateaudelys/products/12001333206" target="_blank" rel="noopener"><svg class="s"><use href="#i-bag"/></svg>Store</a>
+            <a class="lnk" href="https://instagram.com/chateau_de_lys" target="_blank" rel="noopener"><svg class="s"><use href="#i-ig"/></svg>chateau_de_lys</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ work ============ -->
+  <section class="sec" id="work" data-sec="work">
+    <header class="sec-h"><h2>Work</h2><span class="fr" lang="fr">Travail</span></header>
+    <div class="grid">
+      <div class="tile c3 row" style="--i:0">
+        <img class="thumb logo" src="{{LOGO_NEW}}" alt="On The Ground logo">
+        <div class="body"><span class="k">2022.10 –</span><h3>On The Ground</h3><p>General Manager · LP music bar, est. 2010</p></div>
+      </div>
+      <a class="tile c3 row" style="--i:1" href="https://otg-bar.vercel.app" target="_blank" rel="noopener">
+        <div class="body"><span class="k">At On The Ground</span><h3>Online 3D bar game</h3><p>Designed &amp; shipped a playable WebGL mini-experience for the bar.</p></div>
+        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
+      </a>
+      <div class="tile c3" style="--i:2">
+        <span class="k">At On The Ground</span>
+        <div class="ba"><img class="zoom" src="{{LOGO_OLD}}" alt="On The Ground — original logo"><svg class="s"><use href="#i-right"/></svg><img class="zoom" src="{{LOGO_NEW}}" alt="On The Ground — redesigned logo"></div>
+        <h3>Logo redesign</h3>
+      </div>
+      <a class="tile c3 row" style="--i:3" href="https://naver.me/FgHp8lFH" target="_blank" rel="noopener">
+        <img class="thumb tall" src="{{NAVER}}" alt="">
+        <div class="body"><span class="k">At On The Ground</span><h3>Naver Place overhaul</h3><p>Rebuilt the bar’s local map presence.</p></div>
+        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
+      </a>
+      <div class="tile c6" style="--i:4">
+        <span class="k">2026.03 · Seoul</span>
+        <h3>Maîtres Cuisiniers de France — 70th World Congress</h3>
+        <p>FR ↔ KR interpreter at the French master-chefs’ first world congress held in Asia — for the 140th anniversary of France–Korea relations, with ~200 chefs from 22 countries.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ projects ============ -->
+  <section class="sec" id="projects" data-sec="projects">
+    <header class="sec-h"><h2>Projects</h2><span class="fr" lang="fr">Projets</span></header>
+    <div class="grid">
+      <a class="tile c6 row" style="--i:0" href="https://francophones.kr" target="_blank" rel="noopener">
+        {{FRANCO_ICON}}
+        <div class="body"><span class="k">Now</span><h3>francophones.kr</h3><p>A community for francophones in Korea — building &amp; running it now.</p></div>
+        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
+      </a>
+      <a class="tile c3 top" style="--i:1" href="https://instagram.com/premillenniumarchive" target="_blank" rel="noopener">
+        <img class="media" src="{{PMA_CLEAN}}" alt="">
+        <span class="k">2021 – 2022</span><h3>PRE-MILLENNIUM ARCHIVE</h3><p>Y2K archive label · Co-founder · Brand &amp; ops</p>
+        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
+      </a>
+      <a class="tile c3 top" style="--i:2" href="https://instagram.com/apresdocx" target="_blank" rel="noopener">
+        <img class="wordmark" src="{{APRESDOCX}}" alt="aprèsdocx">
+        <span class="k">2023.01 – 04</span><h3>aprèsdocx</h3><p>Personal magazine · Founder &amp; editor</p><span class="m">Site currently closed</span>
+        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ============ contact ============ -->
+  <section class="sec" id="contact" data-sec="contact">
+    <header class="sec-h"><h2>Contact</h2><span class="fr" lang="fr">Bonjour&nbsp;!</span></header>
+    <p class="hello">Projects, interpreting, or just a hello — the inbox is open.</p>
+    <div class="grid">
+      <a class="tile c3 row" style="--i:0" href="mailto:acrackedwon@gmail.com">
+        <span class="badge"><svg class="s"><use href="#i-mail"/></svg></span>
+        <div class="body"><h3>acrackedwon@gmail.com</h3><p>Mail</p></div>
+        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
+      </a>
+      <a class="tile c3 row" style="--i:1" href="https://instagram.com/acrackedwon" target="_blank" rel="noopener">
+        <span class="badge"><svg class="s"><use href="#i-ig"/></svg></span>
+        <div class="body"><h3>acrackedwon</h3><p>Instagram</p></div>
+        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <span>© 2026 Jiwon Shin</span>
+    <span>Minifigure assembled from <a href="https://www.ldraw.org" target="_blank" rel="noopener">LDraw.org</a> parts (CC BY 2.0), rendered with three.js. LEGO® is a trademark of the LEGO Group, which does not sponsor or endorse this site.</span>
+  </footer>
+</div>
+
+<nav class="tabbar" id="tabbar" aria-label="Sections">
+  <span class="bubble" id="bubble" aria-hidden="true"></span>
+  <button class="tab" type="button" data-to="intro" aria-label="Jiwon Shin"><img src="data:image/png;base64,{{IC_ME}}" alt="" draggable="false"></button>
+  <button class="tab" type="button" data-to="school" aria-label="School"><img src="data:image/png;base64,{{IC_SCHOOL}}" alt="" draggable="false"></button>
+  <button class="tab" type="button" data-to="work" aria-label="Work"><img src="data:image/png;base64,{{IC_WORK}}" alt="" draggable="false"></button>
+  <button class="tab" type="button" data-to="projects" aria-label="Projects"><img src="data:image/png;base64,{{IC_PROJECTS}}" alt="" draggable="false"></button>
+  <button class="tab" type="button" data-to="contact" aria-label="Contact"><img src="data:image/png;base64,{{IC_CONTACT}}" alt="" draggable="false"></button>
+</nav>
+
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-hidden="true">
+  <button type="button" id="lb-x" aria-label="Close"><svg class="s"><use href="#i-x"/></svg></button>
+  <img id="lb-img" src="" alt="">
+</div>
+
+<script>
+/* ---------------- tab bar: scroll spy + sliding bubble ---------------- */
+(function () {
+  const tabs = [...document.querySelectorAll('.tab')];
+  const bubble = document.getElementById('bubble');
+  const secs = tabs.map(t => document.getElementById(t.dataset.to));
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let current = null;
+  const select = key => {
+    if (key === current) return;
+    current = key;
+    const t = tabs.find(x => x.dataset.to === key);
+    tabs.forEach(x => x.toggleAttribute('aria-current', x === t));
+    bubble.style.width = t.offsetWidth + 'px';
+    bubble.style.transform = 'translateX(' + t.offsetLeft + 'px)';
+  };
+  // The section crossing the middle band of the viewport is the current one.
+  const io = new IntersectionObserver(es => {
+    es.forEach(e => { if (e.isIntersecting) select(e.target.dataset.sec); });
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  secs.forEach(s => io.observe(s));
+  tabs.forEach(t => t.addEventListener('click', () => {
+    select(t.dataset.to);
+    document.getElementById(t.dataset.to).scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+  }));
+  addEventListener('resize', () => { const k = current; current = null; if (k) select(k); });
+  select('intro');
+})();
+
+/* ---------------- tile reveal ---------------- */
+(function () {
+  const io = new IntersectionObserver(es => {
+    es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.tile').forEach(t => io.observe(t));
+})();
+
+/* ---------------- photo viewer ---------------- */
+(function () {
+  const lb = document.getElementById('lb'), img = document.getElementById('lb-img'), x = document.getElementById('lb-x');
+  let last = null;
+  const open = src => { last = document.activeElement; img.src = src.currentSrc || src.src; img.alt = src.alt;
+    lb.classList.add('open'); lb.setAttribute('aria-hidden', 'false'); x.focus(); };
+  const close = () => { lb.classList.remove('open'); lb.setAttribute('aria-hidden', 'true'); if (last) last.focus(); };
+  document.querySelectorAll('img.zoom').forEach(i => {
+    i.tabIndex = 0; i.setAttribute('role', 'button');
+    i.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); open(i); });
+    i.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(i); } });
+  });
+  lb.addEventListener('click', e => { if (e.target === lb) close(); });
+  x.addEventListener('click', close);
+  addEventListener('keydown', e => { if (e.key === 'Escape' && lb.classList.contains('open')) close(); });
+})();
+
+/* ---------------- tilt card ----------------
+   Vanilla port of Bencho's Tilt card (MIT, © 2026 Lorenzo Cabra,
+   https://bencho.dev/licence). Same physics: frame-based springs whose
+   damping is raised to dt, so a dropped frame decays the energy of the
+   frames it replaced; the card sinks away from the pointer rather than
+   lifting; light and shadow are written from the same spring position.
+   The 3D minifigure lives on the card surface and is driven from the
+   same springs (see window.__tiltState below). */
+(function () {
+  const frame = document.getElementById('tilt');
+  const surf = document.getElementById('tilt-card');
+  const sheen = document.getElementById('tilt-sheen');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const mix = (a, b, t) => a + (b - a) * t;
+  const TILT = 10, SINK = 14, SHADE = 60;
+  const springOf = tune => ({ k: 0.08 + (tune / 100) * 0.16, d: 0.62 + (tune / 100) * 0.2 });
+  const { k, d } = springOf(50);
+  const mk = () => ({ cur: 0, vel: 0, to: 0 });
+  const S = { x: mk(), y: mk(), l: mk() };
+  let at = { x: 0, y: 0 }, on = false, raf = 0, prev = 0;
+
+  // Shared with the 3D scene so the figure turns with the card.
+  const state = window.__tiltState = { x: 0, y: 0, lit: 0, onFrame: null, wake: () => kick() };
+
+  const targets = () => {
+    const live = on && !reduced;
+    S.x.to = live ? at.x * 100 : 0; S.y.to = live ? at.y * 100 : 0; S.l.to = live ? 100 : 0;
+  };
+  const write = () => {
+    const sx = S.x.cur / 100, sy = S.y.cur / 100, lit = clamp(S.l.cur / 100, 0, 1);
+    state.x = sx; state.y = sy; state.lit = lit;
+    const rx = -sy * TILT, ry = sx * TILT;
+    surf.style.transform = 'translateZ(' + (-SINK * lit).toFixed(2) + 'px) rotateX(' + rx.toFixed(3) + 'deg) rotateY(' + ry.toFixed(3) + 'deg)';
+    const sc = frame.offsetWidth / 260;
+    surf.style.boxShadow = '0 ' + (mix(20, 9, lit) * sc).toFixed(1) + 'px ' + (mix(44, 24, lit) * sc).toFixed(1) + 'px ' + (-8 * sc).toFixed(1) + 'px rgb(0 0 0 / ' + mix(0.22, 0.15, lit).toFixed(3) + ')';
+    const px = ((at.x + 1) / 2) * 100, py = ((at.y + 1) / 2) * 100 + 6;
+    const dark = (SHADE / 100) * 0.22 * lit, rim = (SHADE / 100) * 0.34 * lit;
+    sheen.style.backgroundImage =
+      'radial-gradient(22% 18% at ' + px + '% ' + py + '%, rgb(0 0 0 / ' + dark + ') 0%, rgb(0 0 0 / ' + (dark * 0.35) + ') 45%, transparent 100%),' +
+      'radial-gradient(52% 42% at 50% 0%, rgb(255 255 255 / ' + rim + ') 0%, transparent 100%)';
+  };
+  const tick = time => {
+    const dt = prev ? clamp((time - prev) / 16.67, 0, 2.5) : 1;
+    prev = time;
+    let busy = false;
+    for (const s of [S.x, S.y, S.l]) {
+      s.vel += (s.to - s.cur) * k * dt;
+      s.vel *= Math.pow(d, dt);
+      s.cur += s.vel * dt;
+      if (Math.abs(s.to - s.cur) < 0.02 && Math.abs(s.vel) < 0.02) { s.cur = s.to; s.vel = 0; } else busy = true;
+    }
+    write();
+    const more = state.onFrame ? state.onFrame(dt) : false;   // the 3D scene may keep us awake (animation)
+    if (busy || more) raf = requestAnimationFrame(tick); else { raf = 0; prev = 0; }
+  };
+  const kick = () => { if (!raf) { prev = 0; raf = requestAnimationFrame(tick); } };
+
+  const track = e => {
+    if (reduced) return;
+    // Measure the fixed frame, never the rotating surface beneath it.
+    const r = frame.getBoundingClientRect();
+    at = { x: clamp(((e.clientX - r.left) / r.width) * 2 - 1, -1, 1), y: clamp(((e.clientY - r.top) / r.height) * 2 - 1, -1, 1) };
+    on = true; targets(); kick();
+  };
+  const off = () => { on = false; targets(); kick(); };
+  frame.addEventListener('pointerenter', track);
+  frame.addEventListener('pointermove', track);
+  frame.addEventListener('pointerout', e => { const to = e.relatedTarget; if (!(to instanceof Node) || !frame.contains(to)) off(); });
+  frame.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') off(); });
+  frame.addEventListener('pointercancel', off);
+  frame.addEventListener('blur', off);
+  frame.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { off(); return; }
+    const dir = { ArrowLeft: [-0.35, 0], ArrowRight: [0.35, 0], ArrowUp: [0, -0.35], ArrowDown: [0, 0.35] }[e.key];
+    if (!dir || reduced) return;
+    e.preventDefault();
+    const p = on ? at : { x: 0, y: 0 };
+    at = { x: clamp(p.x + dir[0], -1, 1), y: clamp(p.y + dir[1], -1, 1) };
+    on = true; targets(); kick();
+  });
+  frame.addEventListener('click', () => { if (state.wave) state.wave(); });
+  write();
+})();
+</script>
+
+<!-- three.js r170 (MIT) + GLTFLoader, and the rigged minifigure (LDraw parts, CC BY 2.0).
+     Kept as inert text at the end of the document so the page paints first;
+     the loader below turns them into modules through blob URLs. -->
+<script type="text/plain" id="src-three">{{THREE_JS}}</script>
+<script type="text/plain" id="src-bgu">{{BGU_JS}}</script>
+<script type="text/plain" id="src-gltf">{{GLTF_JS}}</script>
+<script type="text/plain" id="src-glb">{{MINIFIG_GLB}}</script>
+
+<script type="module">
+/* ---------------- 3D minifigure on the tilt card ---------------- */
+const card = document.getElementById('tilt');
+const canvas = document.getElementById('tilt-gl');
+const state = window.__tiltState;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const probe = document.createElement('canvas');
+const supported = !!(probe.getContext('webgl2') || probe.getContext('webgl'));
+
+async function boot() {
+  const txt = id => document.getElementById(id).textContent;
+  const blob = s => URL.createObjectURL(new Blob([s], { type: 'text/javascript' }));
+  const threeURL = blob(txt('src-three'));
+  const bguURL = blob(txt('src-bgu').replaceAll("from 'three'", "from '" + threeURL + "'"));
+  const gltfURL = blob(txt('src-gltf').replaceAll("from 'three'", "from '" + threeURL + "'")
+                                      .replace("from '../utils/BufferGeometryUtils.js'", "from '" + bguURL + "'"));
+  const THREE = await import(threeURL);
+  const { GLTFLoader } = await import(gltfURL);
+
+  const b64 = txt('src-glb').trim();
+  const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const gltf = await new GLTFLoader().parseAsync(bin.buffer, '');
+
+  const fig = gltf.scene;
+  fig.scale.setScalar(25);
+  const head = fig.getObjectByName('Head');
+  const headRest = head ? head.rotation.y : 0;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setClearColor(0x000000, 0);
+  const scene = new THREE.Scene();
+  scene.add(fig);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x40485a, 1.5));
+  const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(1.2, 2, 2.2); scene.add(key);
+  const rim = new THREE.DirectionalLight(0xdfe8ff, 1.4); rim.position.set(-2, 1.4, -1.5); scene.add(rim);
+
+  // Same framing as the static poster, so the swap is seamless.
+  const box = new THREE.Box3().setFromObject(fig);
+  const ctr = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+  const cam = new THREE.PerspectiveCamera(26, 13 / 16, 0.01, 50);
+  cam.position.set(ctr.x, ctr.y + size.y * 0.06, ctr.z + size.y * 3.05);
+  cam.lookAt(ctr.x, ctr.y - size.y * 0.02, ctr.z);
+  const BASE_YAW = -0.32;
+
+  const mixer = new THREE.AnimationMixer(fig);
+  const waveClip = gltf.animations.find(a => a.name === 'Wave');
+  const wave = waveClip ? mixer.clipAction(waveClip) : null;
+  if (wave) { wave.setLoop(THREE.LoopOnce, 1); wave.clampWhenFinished = false; }
+  let waving = false;
+  mixer.addEventListener('finished', () => { waving = false; });
+
+  let w = 0, h = 0;
+  const resize = () => {
+    const r = canvas.getBoundingClientRect();
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const nw = Math.round(r.width * dpr), nh = Math.round(r.height * dpr);
+    if (nw && nh && (nw !== w || nh !== h)) { w = nw; h = nh; renderer.setSize(w, h, false); }
+  };
+
+  let visible = true;
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; if (visible) state.wake(); }).observe(card);
+
+  // Driven from the tilt card's own loop: one rAF for card and figure.
+  state.onFrame = dt => {
+    if (!visible) return false;
+    resize();
+    fig.rotation.y = BASE_YAW + state.x * 0.32;
+    fig.rotation.x = state.y * 0.06;
+    if (head) head.rotation.y = headRest + state.x * 0.45;
+    if (waving) mixer.update((dt * 16.67) / 1000);
+    renderer.render(scene, cam);
+    return waving;
+  };
+  state.wave = () => {
+    if (!wave || reduced) return;
+    wave.reset().play(); waving = true; state.wake();
+  };
+
+  resize(); renderer.render(scene, cam);
+  card.classList.add('live');
+  // Say hello once, shortly after the figure appears.
+  if (!reduced) setTimeout(() => state.wave(), 700);
+}
+
+if (supported) {
+  const go = () => boot().catch(err => console.warn('minifig: staying on the poster', err));
+  if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 1200 }); else setTimeout(go, 200);
+}
+</script>
