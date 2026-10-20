@@ -112,36 +112,36 @@
     -webkit-tap-highlight-color: transparent;
   }
   .tilt:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; }
-  .tilt-card {
-    position: absolute; inset: 0; border-radius: inherit; overflow: hidden;
-    background: var(--studio); pointer-events: none;
-    box-shadow: 0 20px 44px -8px rgba(0, 0, 0, .22);
-  }
-  /* Glass edge on the card itself, so it belongs to the same material family. */
-  .tilt-card::after {
-    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-    box-shadow: inset 0 1px 0 hsla(0, 0%, 100%, .55), inset 0 0 0 1px hsla(0, 0%, 100%, .22);
-  }
+  /* The card itself is invisible: no fill, rim or drop shadow. Only the figure
+     and its contact shadow show, and they still tip and sink with the springs. */
+  .tilt-card { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
   .tilt-floor {
-    position: absolute; left: 50%; bottom: 9.5%; width: 46%; height: 6%;
+    position: absolute; left: 50%; bottom: 9%; width: 52%; height: 7%;
     transform: translateX(-50%); border-radius: 50%;
-    background: radial-gradient(closest-side, rgba(0, 0, 0, .34), rgba(0, 0, 0, 0));
-    filter: blur(2px);
+    background: radial-gradient(closest-side, rgba(0, 0, 0, .32), rgba(0, 0, 0, 0));
+    filter: blur(3px);
   }
   .tilt-poster, .tilt-gl { position: absolute; inset: 0; width: 100%; height: 100%; }
   .tilt-gl { opacity: 0; transition: opacity .5s ease; }
   .tilt.live .tilt-gl { opacity: 1; }
   .tilt.live .tilt-poster { opacity: 0; transition: opacity .5s ease; }
-  .tilt-cap {
-    position: absolute; left: 18px; right: 18px; top: 16px;
-    display: flex; justify-content: space-between;
-    font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
-    color: hsla(0, 0%, 100%, .78);
-  }
-  .tilt-sheen { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
-  .tilt-hint {
-    position: absolute; left: 0; right: 0; bottom: -30px; text-align: center;
-    font-size: 12px; color: var(--ink-3); pointer-events: none;
+
+  /* ---------------- intro ----------------
+     The site opens on the figure alone, centred and facing you. Clicking it
+     slides the card into its place in the hero (FLIP: it starts translated to
+     the viewport centre and transitions back to none) while the figure turns
+     to three-quarters, then the wordmark, the sections and the tab bar arrive. */
+  html.intro, html.intro body { overflow: hidden; }
+  .hero-card { transition: transform .9s var(--ease-out); }
+  .hero-text { transition: opacity .7s ease .2s, transform .9s var(--ease-out) .14s; }
+  html.intro .hero-text { opacity: 0; transform: translateX(28px); }
+  .sec, footer { transition: opacity .6s ease .4s; }
+  html.intro .sec, html.intro footer { opacity: 0; visibility: hidden; }
+  .tabbar { transition: opacity .5s ease .5s, transform .7s var(--ease-out) .5s; }
+  html.intro .tabbar { opacity: 0; transform: translateX(-50%) translateY(24px); }
+  @media (max-width: 719px) { html.intro .hero-text { transform: translateY(24px); } }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-card, .hero-text, .sec, footer, .tabbar { transition: none; }
   }
 
   /* ---------------- sections ---------------- */
@@ -298,6 +298,11 @@
     var c = document.documentElement.classList;
     if (m) c.add(m);
     c.add('js');
+    // Open on the figure alone — unless a link points straight at a section.
+    if (!location.hash || location.hash === '#intro') {
+      c.add('intro');
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    }
   })();
 </script>
 
@@ -315,13 +320,11 @@
   <!-- ============ hero ============ -->
   <section class="hero" id="intro" data-sec="intro">
     <div class="hero-card">
-      <button class="tilt" id="tilt" type="button" aria-label="Jiwon’s minifigure — click to wave">
+      <button class="tilt" id="tilt" type="button" aria-label="Jiwon Shin — click to say hello">
         <span class="tilt-card" id="tilt-card">
           <span class="tilt-floor" aria-hidden="true"></span>
           <img class="tilt-poster" src="data:image/png;base64,{{MINIFIG_POSTER}}" alt="" draggable="false">
           <canvas class="tilt-gl" id="tilt-gl" aria-hidden="true"></canvas>
-          <span class="tilt-cap" aria-hidden="true"><span>Jiwon Shin</span><span>Seoul</span></span>
-          <span class="tilt-sheen" id="tilt-sheen" aria-hidden="true"></span>
         </span>
       </button>
     </div>
@@ -340,6 +343,29 @@
       </div>
     </div>
   </section>
+
+  <script>
+    // Intro: park the card at the viewport centre (it keeps its real slot in the
+    // grid, so leaving the intro is just transitioning this offset back to zero).
+    (function () {
+      const root = document.documentElement;
+      if (!root.classList.contains('intro')) return;
+      const card = document.querySelector('.hero-card');
+      const quiet = [document.querySelector('.hero-text')];
+      const place = () => {
+        if (!root.classList.contains('intro')) return;
+        card.style.transition = 'none'; card.style.transform = '';
+        const r = card.getBoundingClientRect();
+        const dx = innerWidth / 2 - (r.left + r.width / 2), dy = innerHeight / 2 - (r.top + r.height / 2);
+        card.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
+        card.offsetHeight; card.style.transition = '';
+      };
+      scrollTo(0, 0);
+      place();
+      addEventListener('resize', place);
+      window.__intro = { place, quiet };
+    })();
+  </script>
 
   <!-- ============ school ============ -->
   <section class="sec" id="school" data-sec="school">
@@ -484,6 +510,22 @@
 </div>
 
 <script>
+/* ---------------- intro: inert until entered ---------------- */
+(function () {
+  const root = document.documentElement;
+  if (!root.classList.contains('intro')) return;
+  const rest = [document.querySelector('.hero-text'), ...document.querySelectorAll('.sec'), document.querySelector('footer'), document.getElementById('tabbar')];
+  rest.forEach(el => el && (el.inert = true));
+  window.__enter = () => {
+    if (!root.classList.contains('intro')) return false;
+    root.classList.remove('intro');
+    document.querySelector('.hero-card').style.transform = '';
+    rest.forEach(el => el && (el.inert = false));
+    if (window.__tiltState) window.__tiltState.enter();
+    return true;
+  };
+})();
+
 /* ---------------- tab bar: scroll spy + sliding bubble ---------------- */
 (function () {
   const tabs = [...document.querySelectorAll('.tab')];
@@ -548,19 +590,31 @@
 (function () {
   const frame = document.getElementById('tilt');
   const surf = document.getElementById('tilt-card');
-  const sheen = document.getElementById('tilt-sheen');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-  const mix = (a, b, t) => a + (b - a) * t;
-  const TILT = 10, SINK = 14, SHADE = 60;
+  const TILT = 10, SINK = 14;
   const springOf = tune => ({ k: 0.08 + (tune / 100) * 0.16, d: 0.62 + (tune / 100) * 0.2 });
   const { k, d } = springOf(50);
   const mk = () => ({ cur: 0, vel: 0, to: 0 });
   const S = { x: mk(), y: mk(), l: mk() };
   let at = { x: 0, y: 0 }, on = false, raf = 0, prev = 0;
 
+  /* stage: 0 = intro (figure faces you), 1 = entered (three-quarters). Tweened on
+     the same curve and duration as the card's CSS move — cubic-bezier(.2,.9,.3,1)
+     over 900ms — so the turn and the slide land together. */
+  const bez = (x1, y1, x2, y2) => {
+    const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+    return x => { let t = x; for (let i = 0; i < 6; i++) { const e = ((ax * t + bx) * t + cx) * t - x, dd = (3 * ax * t + 2 * bx) * t + cx; if (Math.abs(e) < 1e-6 || Math.abs(dd) < 1e-6) break; t -= e / dd; } return ((ay * t + by) * t + cy) * t; };
+  };
+  const easeOut = bez(.2, .9, .3, 1), STAGE_MS = 900;
+  let stageT0 = 0;
+
   // Shared with the 3D scene so the figure turns with the card.
-  const state = window.__tiltState = { x: 0, y: 0, lit: 0, onFrame: null, wake: () => kick() };
+  const state = window.__tiltState = {
+    x: 0, y: 0, lit: 0, onFrame: null, wake: () => kick(),
+    stage: document.documentElement.classList.contains('intro') ? 0 : 1,
+    enter: () => { if (reduced) { state.stage = 1; } else { stageT0 = performance.now(); } kick(); },
+  };
 
   const targets = () => {
     const live = on && !reduced;
@@ -571,13 +625,6 @@
     state.x = sx; state.y = sy; state.lit = lit;
     const rx = -sy * TILT, ry = sx * TILT;
     surf.style.transform = 'translateZ(' + (-SINK * lit).toFixed(2) + 'px) rotateX(' + rx.toFixed(3) + 'deg) rotateY(' + ry.toFixed(3) + 'deg)';
-    const sc = frame.offsetWidth / 260;
-    surf.style.boxShadow = '0 ' + (mix(20, 9, lit) * sc).toFixed(1) + 'px ' + (mix(44, 24, lit) * sc).toFixed(1) + 'px ' + (-8 * sc).toFixed(1) + 'px rgb(0 0 0 / ' + mix(0.22, 0.15, lit).toFixed(3) + ')';
-    const px = ((at.x + 1) / 2) * 100, py = ((at.y + 1) / 2) * 100 + 6;
-    const dark = (SHADE / 100) * 0.22 * lit, rim = (SHADE / 100) * 0.34 * lit;
-    sheen.style.backgroundImage =
-      'radial-gradient(22% 18% at ' + px + '% ' + py + '%, rgb(0 0 0 / ' + dark + ') 0%, rgb(0 0 0 / ' + (dark * 0.35) + ') 45%, transparent 100%),' +
-      'radial-gradient(52% 42% at 50% 0%, rgb(255 255 255 / ' + rim + ') 0%, transparent 100%)';
   };
   const tick = time => {
     const dt = prev ? clamp((time - prev) / 16.67, 0, 2.5) : 1;
@@ -588,6 +635,11 @@
       s.vel *= Math.pow(d, dt);
       s.cur += s.vel * dt;
       if (Math.abs(s.to - s.cur) < 0.02 && Math.abs(s.vel) < 0.02) { s.cur = s.to; s.vel = 0; } else busy = true;
+    }
+    if (stageT0) {
+      const x = Math.min(1, (time - stageT0) / STAGE_MS);
+      state.stage = easeOut(x);
+      if (x < 1) busy = true; else stageT0 = 0;
     }
     write();
     const more = state.onFrame ? state.onFrame(dt) : false;   // the 3D scene may keep us awake (animation)
@@ -618,7 +670,11 @@
     at = { x: clamp(p.x + dir[0], -1, 1), y: clamp(p.y + dir[1], -1, 1) };
     on = true; targets(); kick();
   });
-  frame.addEventListener('click', () => { if (state.wave) state.wave(); });
+  // First click leaves the intro (and waves hello); later clicks just wave.
+  frame.addEventListener('click', () => {
+    if (window.__enter) window.__enter();
+    if (state.wave) state.wave();
+  });
   write();
 })();
 </script>
@@ -698,7 +754,7 @@ async function boot() {
   state.onFrame = dt => {
     if (!visible) return false;
     resize();
-    fig.rotation.y = BASE_YAW + state.x * 0.32;
+    fig.rotation.y = BASE_YAW * state.stage + state.x * 0.32;   // 0 = facing you
     fig.rotation.x = state.y * 0.06;
     if (head) head.rotation.y = headRest + state.x * 0.45;
     if (waving) mixer.update((dt * 16.67) / 1000);
@@ -710,10 +766,9 @@ async function boot() {
     wave.reset().play(); waving = true; state.wake();
   };
 
+  fig.rotation.y = BASE_YAW * state.stage;
   resize(); renderer.render(scene, cam);
   card.classList.add('live');
-  // Say hello once, shortly after the figure appears.
-  if (!reduced) setTimeout(() => state.wave(), 700);
 }
 
 if (supported) {
