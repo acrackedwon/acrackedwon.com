@@ -768,12 +768,41 @@ async function boot() {
   cam.lookAt(ctr.x, ctr.y - size.y * 0.02, ctr.z);
   const BASE_YAW = -0.32;
 
-  const mixer = new THREE.AnimationMixer(fig);
-  const waveClip = gltf.animations.find(a => a.name === 'Wave');
-  const wave = waveClip ? mixer.clipAction(waveClip) : null;
-  if (wave) { wave.setLoop(THREE.LoopOnce, 1); wave.clampWhenFinished = false; }
-  let waving = false;
-  mixer.addEventListener('finished', () => { waving = false; });
+  /* The wave, done by hand rather than with the rig's baked clip (which snapped
+     the arm up linearly in 0.4s, parked the hand on top of the hair and twisted
+     the wrist). A minifig shoulder only swings forward/back, so a wave is: lift
+     the arm up beside the head with a little overshoot, rock the shoulder a few
+     degrees while the wrist waggles, then lower it — with the head tipping
+     toward the raised hand and the body leaning slightly into it. Two full
+     rocks fit the hold exactly, so it leaves the hold where it entered. */
+  const handR = fig.getObjectByName('Hand_R');
+  const handRest = handR ? handR.rotation.z : 0;
+  const headRestZ = head ? head.rotation.z : 0;
+  const D2R = Math.PI / 180, UP = -160 * D2R;
+  /* Timing matters more than poses here: a minifig shoulder only swings
+     forward/back, so on the way up and down the arm must pass through
+     pointing straight at the camera, where the hand reads as a big foreshortened
+     claw. So both transits are short — the raise eases in, overshoots a touch
+     and settles; the lower is a quick 0.36s — and the time goes to the hold. */
+  const RAISE = 0.42, SETTLE = 0.16, HOLD = 1.25, LOWER = 0.36;
+  const WAVE = RAISE + SETTLE + HOLD + LOWER, OVER = 1.07;
+  const inOut = x => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  const wavePose = t => {
+    let lift;                                        // 0 = arm down, 1 = arm up
+    const h0 = RAISE + SETTLE, h1 = h0 + HOLD;
+    if (t < RAISE) lift = OVER * inOut(t / RAISE);
+    else if (t < h0) lift = OVER - (OVER - 1) * inOut((t - RAISE) / SETTLE);
+    else if (t < h1) lift = 1;
+    else lift = 1 - inOut(Math.min(1, (t - h1) / LOWER));
+    let rock = 0, wag = 0;
+    if (t >= h0 && t < h1) {
+      const u = t - h0, env = Math.min(1, u / 0.18, (HOLD - u) / 0.18);
+      rock = Math.sin(u * 2 * Math.PI * 1.6) * 11 * D2R * env;
+      wag = Math.sin(u * 2 * Math.PI * 1.6 + 0.7) * 24 * D2R * env;
+    }
+    return { arm: UP * lift + rock, hand: wag, tilt: 0.09 * Math.min(1, lift), lean: 0.03 * Math.min(1, lift), weight: Math.min(1, lift) };
+  };
+  let waveT = -1;                                    // seconds into the wave; -1 = not waving
 
   let w = 0, h = 0;
   const resize = () => {
@@ -808,22 +837,27 @@ async function boot() {
       headYaw = Math.sin(t * 1.15 + 1) * 0.34;
       bob = (Math.sin(t * 2.3) + 1) * 0.009;
       swing = Math.sin(t * 2.3) * 0.16;
-      if (t > nextWave && !waving) { state.wave(); nextWave = t + 9 + Math.random() * 6; }
+      if (t > nextWave && waveT < 0) { state.wave(); nextWave = t + 9 + Math.random() * 6; }
     }
     fig.rotation.y = yaw + state.x * 0.32;   // 0 = facing you
     fig.rotation.x = state.y * 0.06;
     fig.position.y = figRestY + bob;
     if (head) head.rotation.y = headRest + headYaw + state.x * 0.45;
-    if (armR) armR.rotation.x = armRest.R + swing;    // the clip overrides these while waving
+    let w = null;
+    if (waveT >= 0) { waveT += sec; if (waveT >= WAVE) waveT = -1; else w = wavePose(waveT); }
+    const k = w ? w.weight : 0;                       // the idle swing yields to the wave
+    if (armR) armR.rotation.x = armRest.R + swing * (1 - k) + (w ? w.arm : 0);
     if (armL) armL.rotation.x = armRest.L - swing;
-    if (waving) mixer.update(sec);
+    if (handR) handR.rotation.z = handRest + (w ? w.hand : 0);
+    if (head) head.rotation.z = headRestZ + (w ? w.tilt : 0);
+    fig.rotation.z = w ? -w.lean : 0;
     renderer.render(scene, cam);
-    return waving || bot;
+    return waveT >= 0 || bot;
   };
   botMode.addEventListener('change', () => state.wake());
   state.wave = () => {
-    if (!wave || reduced || waving) return;
-    wave.reset().play(); waving = true; state.wake();
+    if (reduced || waveT >= 0) return;
+    waveT = 0; state.wake();
   };
 
   fig.rotation.y = BASE_YAW * (matchMedia('(max-width: 899px)').matches ? -1 : 1) * state.stage;
