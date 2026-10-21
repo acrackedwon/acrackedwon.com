@@ -6885,7 +6885,7 @@ async function boot() {
   /* The wave, done by hand rather than with the rig's baked clip (which snapped
      the arm up linearly in 0.4s, parked the hand on top of the hair and twisted
      the wrist). Lift the arm up beside the head, then swing it side to side a
-     few times, then lower it. Body and head stay put.
+     few times, quick and small, then lower it. Body, head and hand stay put.
 
      The side-to-side swing is a rotation about the arm's own Z — a real
      minifig shoulder can't do that, but on screen it is what a wave looks
@@ -6895,13 +6895,11 @@ async function boot() {
      Timing matters as much as poses: the lift has to pass through pointing
      straight at the camera, where the hand reads as a big foreshortened claw,
      so both transits are short and the time goes to the swing. */
-  const handR = fig.getObjectByName('Hand_R');
-  const handRest = handR ? handR.rotation.z : 0;
   const armRestZ = armR ? armR.rotation.z : 0;
   const D2R = Math.PI / 180, UP = -160 * D2R;
   const SIDE = -1;                            // sign that swings the raised right arm outward, away from the head
-  const RAISE = 0.42, SETTLE = 0.16, HOLD = 1.3, LOWER = 0.36;
-  const WAVE = RAISE + SETTLE + HOLD + LOWER, OVER = 1.07, HZ = 1.55;
+  const RAISE = 0.42, SETTLE = 0.16, HOLD = 0.9, LOWER = 0.36;
+  const WAVE = RAISE + SETTLE + HOLD + LOWER, OVER = 1.07, HZ = 3.3;   // quick little shakes
   const inOut = x => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
   const wavePose = t => {
     let lift;                                        // 0 = arm down, 1 = arm up
@@ -6913,10 +6911,9 @@ async function boot() {
     // swing starts as the arm comes up and dies away as it goes down
     const up = Math.min(1, Math.max(0, lift));
     const swing = Math.sin(Math.max(0, t - RAISE * 0.6) * 2 * Math.PI * HZ);
-    // centred 10° out from the head, ±16° either side, so the hand never brushes the hair
-    const side = SIDE * (10 * up + 16 * swing * up * up) * D2R;
-    const hand = Math.sin(Math.max(0, t - RAISE * 0.6) * 2 * Math.PI * HZ - 0.9) * 10 * D2R * up;  // wrist trails a little
-    return { arm: UP * lift, side, hand, weight: up };
+    // centred 8° out from the head, ±7° either side: small and fast, hand stays fixed to the arm
+    const side = SIDE * (8 * up + 7 * swing * up * up) * D2R;
+    return { arm: UP * lift, side, weight: up };
   };
   let waveT = -1;                                    // seconds into the wave; -1 = not waving
 
@@ -6965,7 +6962,6 @@ async function boot() {
     if (armR) armR.rotation.x = armRest.R + swing * (1 - k) + (w ? w.arm : 0);
     if (armL) armL.rotation.x = armRest.L - swing;
     if (armR) armR.rotation.z = armRestZ + (w ? w.side : 0);
-    if (handR) handR.rotation.z = handRest + (w ? w.hand : 0);
     renderer.render(scene, cam);
     return waveT >= 0 || bot;
   };
