@@ -1,152 +1,71 @@
 <title>Jiwon Shin</title>
 <style>
   /* ============================================================
-     acrackedwon.com — v3
-     Hero: a tilt card holding a live 3D minifigure, beside a large
-     rounded wordmark. Below, one section per subject as a bento of
-     glass tiles. A floating glass tab bar with a sliding white
-     selection bubble tracks where you are.
+     acrackedwon.com — v4, minimal
+     One neutral ground, one typeface, one hairline. The minifigure
+     holds the left column (PC) or the bottom-right corner (mobile);
+     everything else is plain text in a single column.
      ============================================================ */
-
-  /* SF Pro Rounded is only reachable through ui-rounded on Apple
-     platforms; Roboto Round (Apache-2.0) is the embedded fallback. */
-  @font-face {
-    font-family: 'Roboto Round';
-    src: url("data:font/woff2;base64,{{ROBOTO_ROUND}}") format('woff2');
-    font-weight: 400 800; font-style: normal; font-display: swap;
-  }
-
   :root {
-    --wp: url("data:image/jpeg;base64,{{WP_BLEU}}");
-    --ink: #0a1d3f; --ink-2: rgba(10, 29, 63, .66); --ink-3: rgba(10, 29, 63, .42);
-    --accent: #2f5bd9;
-    /* studio sweep behind the minifigure, tuned per mood */
-    --studio: radial-gradient(120% 92% at 50% 16%, #8ba6ec 0%, #4565c9 52%, #22398a 100%);
-
-    --glass: hsla(0, 0%, 100%, .24);
-    --glass-hi: hsla(0, 0%, 100%, .36);
-    --rim: hsla(0, 0%, 100%, .46);
-    --r-lg: 28px; --r-md: 18px; --r-sm: 12px;
+    --bg: #f2f2f0;
+    --fg: #111111;
+    --fg-2: #6e6e6c;
+    --fg-3: #a3a3a0;
+    --line: rgba(0, 0, 0, .1);
+    --nav-bg: rgba(242, 242, 240, .86);
     --ease-out: cubic-bezier(.2, .9, .3, 1);
-    --spring: cubic-bezier(.34, 1.4, .5, 1);
-    --emboss: 1px 1px 2px hsla(0, 0%, 100%, .3), -1px -1px 0 #000;
-  }
-  html.wp-green {
-    --wp: url("data:image/jpeg;base64,{{WP_VERT}}");
-    --ink: #142f18; --ink-2: rgba(20, 47, 24, .68); --ink-3: rgba(20, 47, 24, .44); --accent: #2e7d3f;
-    --studio: radial-gradient(120% 92% at 50% 16%, #b3cf96 0%, #648a4b 52%, #34502a 100%);
-  }
-  html.wp-silver {
-    --wp: url("data:image/jpeg;base64,{{WP_SILVER}}");
-    --ink: #1d1f23; --ink-2: rgba(29, 31, 35, .66); --ink-3: rgba(29, 31, 35, .42); --accent: #4a5060;
-    --studio: radial-gradient(120% 92% at 50% 16%, #e2e5ea 0%, #a2a7b0 52%, #5d626b 100%);
+    color-scheme: light;
   }
 
   * { box-sizing: border-box; }
-  html { background: #0b0f14; scroll-behavior: smooth; }
+  html { background: var(--bg); scroll-behavior: smooth; }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
   body {
-    margin: 0; color: var(--ink); isolation: isolate;
-    font-family: ui-rounded, "SF Pro Rounded", "Roboto Round", -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", sans-serif;
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", Roboto, Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    font-size: 16px; line-height: 1.55; letter-spacing: -.011em;
     -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   }
-  body::before {
-    content: ""; position: fixed; inset: 0; z-index: -1;
-    background: var(--wp) center / cover no-repeat;
-  }
-  a { color: inherit; }
+  a { color: inherit; text-decoration: none; }
   img { display: block; }
+  p { margin: 0; }
 
   /* ---------------- layout ----------------
-     Two parts: the stage, which only ever holds the figure, and the page, which
-     holds everything else.
-       PC (≥900px): the stage is a sticky left column the height of the viewport,
-                    so the figure never moves while the right column scrolls.
-       Mobile:      the stage is pinned to the bottom-right corner, small, just
-                    above the tab bar — the figure rides along as a little bot. */
-  .page { width: min(820px, 100%); margin: 0 auto; padding: 0 20px 150px; }
+     PC (≥900px): sticky figure column on the left, text column on the right.
+     Mobile: the figure is a small bot pinned to the bottom-right corner. */
+  .page { width: min(640px, 100%); padding: 0 24px 160px; }
   .stage { z-index: 15; }
   .hero-card { width: min(300px, 76vw); }
   @media (min-width: 900px) {
-    :root { --stage-w: clamp(340px, 40vw, 560px); }
+    :root { --stage-w: clamp(340px, 42vw, 600px); }
     .layout { display: grid; grid-template-columns: var(--stage-w) minmax(0, 1fr); }
     .stage { position: sticky; top: 0; height: 100vh; height: 100svh; display: grid; place-items: center; }
-    .hero-card { width: min(360px, calc(var(--stage-w) - 72px)); }
-    .page { padding: 0 clamp(24px, 4vw, 56px) 150px; }
+    .hero-card { width: min(340px, calc(var(--stage-w) - 96px)); }
+    .page { padding: 0 clamp(24px, 5vw, 72px) 160px 0; }
   }
   @media (max-width: 899px) {
+    .page { margin: 0 auto; }
     .stage {
-      position: fixed; width: 92px; pointer-events: none;
-      right: max(8px, env(safe-area-inset-right));
-      bottom: calc(max(18px, env(safe-area-inset-bottom)) + 52px);
+      position: fixed; width: 88px; pointer-events: none;
+      right: max(10px, env(safe-area-inset-right));
+      bottom: max(12px, env(safe-area-inset-bottom));
     }
     .hero-card { width: 100%; pointer-events: auto; }
   }
 
-  /* ---------------- hero (first screen of the page) ---------------- */
-  .hero {
-    min-height: 100vh; min-height: 100svh;
-    display: flex; flex-direction: column; justify-content: center;
-    padding: clamp(48px, 8vh, 96px) 0;
-  }
-  @media (max-width: 899px) {
-    .hero { align-items: center; text-align: center; }
-    .lede { margin-left: auto; margin-right: auto; }
-    .facts, .actions { justify-content: center; }
-  }
-  .eyebrow {
-    margin: 0 0 14px; font-size: 13px; font-weight: 600;
-    letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2);
-  }
-  .display {
-    margin: 0; font-size: clamp(64px, 8.4vw, 128px); font-weight: 600;
-    line-height: .9; letter-spacing: -.035em; text-shadow: var(--emboss);
-  }
-  .lede {
-    margin: 22px 0 0; max-width: 30ch;
-    font-size: clamp(19px, 2.1vw, 24px); font-weight: 500; line-height: 1.35; letter-spacing: -.015em;
-  }
-  .facts { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0 0; padding: 0; list-style: none; }
-  .facts a {
-    display: inline-flex; align-items: baseline; gap: 6px; text-decoration: none;
-    padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 500;
-    background: var(--glass); border: 1px solid var(--rim);
-    -webkit-backdrop-filter: blur(14px) saturate(1.6); backdrop-filter: blur(14px) saturate(1.6);
-    box-shadow: inset 0 1px 0 hsla(0, 0%, 100%, .5);
-    transition: background .2s ease, transform .3s var(--spring);
-  }
-  .facts a span { color: var(--ink-2); font-weight: 400; }
-  .facts a:hover { background: var(--glass-hi); transform: translateY(-1px); }
-  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
-  .btn {
-    display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
-    height: 44px; padding: 0 18px 0 14px; border-radius: 999px; font-size: 15px; font-weight: 600;
-    transition: transform .3s var(--spring), background .2s ease;
-  }
-  .btn .s { width: 18px; height: 18px; }
-  .btn.primary { background: var(--ink); color: #fff; box-shadow: 0 8px 22px rgba(0, 0, 0, .22); }
-  .btn.ghost { background: var(--glass); border: 1px solid var(--rim);
-    -webkit-backdrop-filter: blur(14px) saturate(1.6); backdrop-filter: blur(14px) saturate(1.6); }
-  .btn:hover { transform: translateY(-2px); }
-  .btn:active { transform: translateY(0) scale(.98); }
-
-  /* ---------------- tilt card (after Bencho's Tilt card, MIT) ----------------
-     The fixed frame owns perspective and pointer measurement; rotation,
-     light and shadow are all written from one spring position. */
+  /* ---------------- figure (tilt card after Bencho's Tilt card, MIT) ---------------- */
   .tilt {
     all: unset; box-sizing: border-box; position: relative; display: block;
-    width: 100%; aspect-ratio: 13 / 16; border-radius: var(--r-lg);
+    width: 100%; aspect-ratio: 13 / 16; border-radius: 24px;
     perspective: 800px; cursor: pointer; touch-action: pan-y;
     -webkit-tap-highlight-color: transparent;
   }
-  .tilt:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; }
-  /* The card itself is invisible: no fill, rim or drop shadow. Only the figure
-     and its contact shadow show, and they still tip and sink with the springs. */
+  .tilt:focus-visible { outline: 1px solid var(--fg); outline-offset: 6px; }
   .tilt-card { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
   .tilt-floor {
-    position: absolute; left: 50%; bottom: 9%; width: 52%; height: 7%;
+    position: absolute; left: 50%; bottom: 9%; width: 50%; height: 6%;
     transform: translateX(-50%); border-radius: 50%;
-    background: radial-gradient(closest-side, rgba(0, 0, 0, .32), rgba(0, 0, 0, 0));
+    background: radial-gradient(closest-side, rgba(0, 0, 0, .22), rgba(0, 0, 0, 0));
     filter: blur(3px);
   }
   .tilt-poster, .tilt-gl { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -155,173 +74,110 @@
   .tilt.live .tilt-poster { opacity: 0; transition: opacity .5s ease; }
 
   /* ---------------- intro ----------------
-     The site opens on the figure alone, centred and facing you. Clicking it
-     sends the card to its home on the stage (FLIP: it starts translated — and on
-     mobile scaled up — to the viewport centre, and transitions back to none)
-     while the figure turns, then the wordmark, sections and tab bar arrive. */
+     Opens on the figure alone, centred and facing you. Clicking it sends the
+     card home (FLIP), then the text and nav fade in. */
   html.intro, html.intro body { overflow: hidden; }
   .hero-card { transition: transform .9s var(--ease-out); }
-  .hero-text { transition: opacity .7s ease .2s, transform .9s var(--ease-out) .14s; }
-  html.intro .hero-text { opacity: 0; transform: translateX(28px); }
-  .sec, footer { transition: opacity .6s ease .4s; }
-  html.intro .sec, html.intro footer { opacity: 0; visibility: hidden; }
-  .tabbar { transition: opacity .5s ease .5s, transform .7s var(--ease-out) .5s; }
-  html.intro .tabbar { opacity: 0; transform: translateX(-50%) translateY(24px); }
-  @media (max-width: 899px) { html.intro .hero-text { transform: translateY(24px); } }
-  @media (prefers-reduced-motion: reduce) {
-    .hero-card, .hero-text, .sec, footer, .tabbar { transition: none; }
+  .hero-text, .nav, .sec, footer { transition: opacity .7s ease .25s; }
+  html.intro .hero-text, html.intro .nav, html.intro .sec, html.intro footer { opacity: 0; visibility: hidden; }
+  @media (prefers-reduced-motion: reduce) { .hero-card, .hero-text, .nav, .sec, footer { transition: none; } }
+
+  /* ---------------- nav ----------------
+     Plain words. The current one is full ink, with a hairline that slides
+     under it as you scroll. */
+  .nav {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; gap: 22px; padding: 22px 0 14px;
+    background: var(--nav-bg);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    font-size: 14px;
   }
+  .nav a { position: relative; color: var(--fg-2); transition: color .2s ease; }
+  .nav a:hover, .nav a[aria-current] { color: var(--fg); }
+  .nav a:focus-visible { outline: 1px solid var(--fg); outline-offset: 4px; }
+  .nav-line {
+    position: absolute; left: 0; bottom: 10px; height: 1px; width: 0; background: var(--fg);
+    transition: transform .42s var(--ease-out), width .42s var(--ease-out);
+  }
+  @media (prefers-reduced-motion: reduce) { .nav-line { transition: none; } }
+  @media (max-width: 899px) { .nav { margin: 0 -24px; padding-left: 24px; padding-right: 24px; } }
+
+  /* ---------------- hero ---------------- */
+  .hero {
+    min-height: calc(100vh - 60px); min-height: calc(100svh - 60px);
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 40px 0 72px;
+  }
+  .name { margin: 0; font-size: clamp(34px, 3.6vw, 48px); font-weight: 600; line-height: 1.08; letter-spacing: -.03em; }
+  .role { margin-top: 6px; font-size: clamp(17px, 1.5vw, 20px); color: var(--fg-2); letter-spacing: -.02em; }
+  .lede { margin-top: 28px; max-width: 34ch; font-size: clamp(17px, 1.5vw, 20px); line-height: 1.45; letter-spacing: -.02em; }
+  .links { display: flex; flex-wrap: wrap; gap: 6px 24px; margin-top: 28px; font-size: 15px; }
+
+  /* text links: underline on hover, small north-east arrow */
+  .ln { display: inline-flex; align-items: baseline; gap: 3px; border-bottom: 1px solid transparent; transition: border-color .2s ease; }
+  .ln:hover { border-bottom-color: currentColor; }
+  .ln:focus-visible { outline: 1px solid var(--fg); outline-offset: 3px; }
+  .ln::after { content: "↗"; font-size: .82em; color: var(--fg-3); transition: color .2s ease, transform .3s var(--ease-out); }
+  .ln:hover::after { color: var(--fg); transform: translate(1px, -1px); }
 
   /* ---------------- sections ---------------- */
-  .sec { padding-top: clamp(56px, 9vh, 96px); scroll-margin-top: 8px; }
-  .sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 4px 22px; }
-  .sec-h h2 {
-    margin: 0; font-size: clamp(44px, 7vw, 84px); font-weight: 600;
-    line-height: .95; letter-spacing: -.03em; text-shadow: var(--emboss);
+  .sec { padding-top: 72px; scroll-margin-top: 48px; }
+  .sec h2 {
+    margin: 0 0 6px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
+    font-size: 14px; font-weight: 600; letter-spacing: -.005em;
   }
-  .sec-h .fr { font-size: 17px; font-weight: 500; color: var(--ink-2); }
+  .sec h2 span { margin-left: 8px; font-weight: 400; color: var(--fg-3); }
 
-  .grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
-  .tile {
-    position: relative; grid-column: span 6; min-width: 0;
-    display: flex; flex-direction: column; gap: 6px;
-    padding: 22px 24px; border-radius: var(--r-lg);
-    color: inherit; text-decoration: none;
-    background: var(--glass); border: 1px solid var(--rim);
-    -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
-    box-shadow: inset 0 1px 0 hsla(0, 0%, 100%, .5), 0 12px 30px rgba(4, 11, 36, .12);
+  .row {
+    display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 4px 24px;
+    padding: 20px 0; border-bottom: 1px solid var(--line);
   }
-  @media (min-width: 720px) {
-    .c2 { grid-column: span 2; } .c3 { grid-column: span 3; } .c4 { grid-column: span 4; }
-  }
-  a.tile { transition: background .2s ease, transform .35s var(--spring); }
-  a.tile:hover { background: var(--glass-hi); transform: translateY(-2px); }
-  a.tile:active { transform: translateY(0) scale(.99); }
-  a.tile:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
-
-  /* reveal on scroll — one staggered spring per tile */
-  .js .tile { opacity: 0; transform: translateY(18px) scale(.98); }
-  .js .tile.in { opacity: 1; transform: none;
-    transition: opacity .5s ease, transform .6s var(--spring), background .2s ease;
-    transition-delay: calc(var(--i, 0) * 60ms), calc(var(--i, 0) * 60ms), 0s; }
-  .js a.tile.in:hover { transform: translateY(-2px); transition-delay: 0s; }
-  @media (prefers-reduced-motion: reduce) { .js .tile { opacity: 1; transform: none; } }
-
-  .tile .k { font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2); }
-  .tile h3 { margin: 0; font-size: 22px; font-weight: 500; line-height: 1.2; letter-spacing: -.02em; overflow-wrap: anywhere; }
-  .tile p { margin: 0; font-size: 15px; line-height: 1.4; color: var(--ink-2); }
-  .tile .m { font-size: 13px; color: var(--ink-3); }
-  .tile.row { flex-direction: row; align-items: center; gap: 18px; }
-  .tile.row > .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-  .go {
-    flex: none; width: 36px; height: 36px; border-radius: 50%; margin-left: auto;
-    display: grid; place-items: center; background: hsla(0, 0%, 100%, .4);
-    transition: transform .35s var(--spring);
-  }
-  .go .s { width: 16px; height: 16px; }
-  a.tile:hover .go { transform: translate(2px, -2px); }
-  .tile.top .go { position: absolute; top: 18px; right: 18px; }
-  .lnk { display: inline-flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 10px;
-    font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; }
-  .lnk .s { width: 15px; height: 15px; }
-  .lnk:hover { text-decoration: underline; }
-  .lnks { display: flex; flex-wrap: wrap; gap: 4px 18px; }
-  .s { display: block; flex: none; }
-
-  .thumb { flex: none; width: 64px; height: 64px; border-radius: 14px; object-fit: cover; background: #fff; }
-  .thumb.tall { height: 80px; object-position: top; border-radius: 10px; }
-  .thumb.logo { padding: 4px; }
-  .media { width: 100%; max-width: 168px; border-radius: 14px; margin-bottom: 8px; box-shadow: 0 6px 16px rgba(0, 0, 0, .14); }
-  .wordmark { width: 128px; height: auto; margin: 2px 0 10px; }
-  .franco { width: 56px; height: 56px; flex: none; }
-  .ba { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; color: var(--ink-3); }
-  .ba img { width: 72px; height: 72px; border-radius: 16px; background: #fff; object-fit: cover; }
-  .ba .s { width: 18px; height: 18px; }
-  .split { flex-direction: row; align-items: center; gap: 24px; }
-  .split > .body { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-  .split .cover { width: 168px; flex: none; border-radius: 16px; box-shadow: 0 8px 22px rgba(0, 0, 0, .16); }
-
-  /* PARLÉ posters — a snap-scrolling strip that bleeds to the tile edges */
-  .strip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
-    margin: 6px -24px 10px; padding: 4px 24px 8px; scrollbar-width: none; }
-  .strip::-webkit-scrollbar { display: none; }
-  .strip img { flex: none; width: 104px; height: 130px; object-fit: cover; object-position: top;
-    border-radius: 10px; background: #fff; scroll-snap-align: start; cursor: zoom-in;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, .2); transition: transform .3s var(--spring); }
-  .strip img:hover { transform: translateY(-3px); }
-  .mini { display: flex; gap: 12px; align-items: flex-start; padding-top: 12px; margin-top: 6px;
-    border-top: 1px solid hsla(0, 0%, 100%, .4); }
-  .mini img { width: 44px; height: 55px; border-radius: 7px; object-fit: cover; object-position: top; flex: none; cursor: zoom-in; }
-  .mini b { display: block; font-size: 14px; font-weight: 600; }
-  .mini span { display: block; font-size: 13px; line-height: 1.35; color: var(--ink-2); }
-
-  .badge { flex: none; width: 52px; height: 52px; border-radius: 15px; display: grid; place-items: center;
-    background: var(--ink); color: #fff; }
-  .badge .s { width: 24px; height: 24px; }
-  .hello { margin: 0 4px 22px; font-size: clamp(19px, 2.2vw, 24px); font-weight: 500; letter-spacing: -.015em; }
-
-  footer { margin: 64px 4px 0; display: grid; gap: 6px; font-size: 12px; line-height: 1.5; color: var(--ink-2); }
-  footer a { text-decoration: underline; text-underline-offset: 2px; }
-
-  @media (max-width: 719px) {
-    .split { flex-direction: column; align-items: flex-start; }
-    .split .cover { width: 100%; max-width: 240px; }
-    .tile { padding: 20px; }
-    .tile.row { gap: 14px; }
-    .tile h3 { font-size: 20px; }
-    .strip { margin: 6px -20px 10px; padding: 4px 20px 8px; }
+  .when { font-size: 14px; color: var(--fg-2); font-variant-numeric: tabular-nums; padding-top: 2px; }
+  .what { min-width: 0; }
+  .what h3 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -.015em; line-height: 1.4; }
+  .what h3 .ln { font-weight: 600; }
+  .what p { margin-top: 2px; font-size: 15px; color: var(--fg-2); line-height: 1.5; }
+  .what .links { margin-top: 8px; font-size: 14px; gap: 4px 18px; }
+  .sub { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+  .sub li { padding-left: 16px; position: relative; font-size: 15px; line-height: 1.45; }
+  .sub li::before { content: "–"; position: absolute; left: 0; color: var(--fg-3); }
+  .sub li span { color: var(--fg-2); }
+  @media (max-width: 560px) {
+    .row { grid-template-columns: 1fr; gap: 2px; padding: 18px 0; }
+    .when { padding-top: 0; font-size: 13px; }
   }
 
-  /* ---------------- tab bar ----------------
-     Floating glass pill. The white bubble slides to the section in view.
-     No labels — the icons carry it. */
-  .tabbar {
-    position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); z-index: 20;
-    transform: translateX(-50%);
-    display: flex; gap: 4px; padding: 6px; border-radius: 999px;
-    background: hsla(0, 0%, 100%, .26); border: 1px solid hsla(0, 0%, 100%, .5);
-    -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
-    box-shadow: inset 0 1px 0 hsla(0, 0%, 100%, .6), 0 14px 40px rgba(0, 0, 0, .26);
-  }
-  .bubble {
-    position: absolute; top: 6px; left: 0; height: calc(100% - 12px); width: 0; border-radius: 999px;
-    background: linear-gradient(180deg, hsla(0, 0%, 100%, .7), hsla(0, 0%, 100%, .52));
-    box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px hsla(0, 0%, 100%, .5), 0 4px 14px rgba(0, 0, 0, .14);
-    transition: transform .42s var(--ease-out), width .42s var(--ease-out);
-    pointer-events: none;
-  }
-  .tab {
-    all: unset; position: relative; z-index: 1; display: grid; place-items: center;
-    width: 52px; height: 46px; border-radius: 999px; cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .tab img { width: 32px; height: 32px; transition: transform .3s var(--spring); }
-  .tab:hover img { transform: scale(1.06); }
-  .tab:active img { transform: scale(.94); }
-  .tab:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
-  @media (prefers-reduced-motion: reduce) { .bubble { transition: none; } }
-  @media (min-width: 900px) { .tabbar { left: calc(var(--stage-w) + (100vw - var(--stage-w)) / 2); } }
+  /* thumbnails: small, square-cornered-ish, no shadow; tap to enlarge */
+  .thumbs { display: flex; gap: 6px; margin-top: 12px; overflow-x: auto; scrollbar-width: none; }
+  .thumbs::-webkit-scrollbar { display: none; }
+  .thumbs img { flex: none; width: 52px; height: 65px; object-fit: cover; object-position: top; border-radius: 3px; background: #fff; cursor: zoom-in; }
+  .thumbs img.sq { height: 52px; object-position: center; }
+  .thumbs .to { align-self: center; color: var(--fg-3); font-size: 13px; padding: 0 2px; }
+  .thumbs img:focus-visible { outline: 1px solid var(--fg); outline-offset: 2px; }
+
+  footer { margin-top: 72px; font-size: 12px; line-height: 1.6; color: var(--fg-3); }
+  footer p + p { margin-top: 4px; }
+  footer a { border-bottom: 1px solid var(--line); }
+
+  /* reveal: a quiet fade, rows only */
+  .js .rv { opacity: 0; transform: translateY(8px); transition: opacity .6s ease, transform .6s var(--ease-out); }
+  .js .rv.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .js .rv { opacity: 1; transform: none; transition: none; } }
 
   /* ---------------- photo viewer ---------------- */
-  .lb { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: clamp(20px, 6vw, 64px);
-    background: rgba(10, 12, 16, .72); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  .lb { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: clamp(20px, 6vw, 72px);
+    background: var(--nav-bg); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
     opacity: 0; pointer-events: none; transition: opacity .25s ease; }
   .lb.open { opacity: 1; pointer-events: auto; }
-  .lb img { max-width: min(92vw, 760px); max-height: 86vh; border-radius: 18px; background: #fff;
-    box-shadow: 0 40px 90px rgba(0, 0, 0, .5); transform: scale(.94); transition: transform .32s var(--spring); }
-  .lb.open img { transform: none; }
-  .lb button { all: unset; position: absolute; top: 18px; right: 18px; width: 40px; height: 40px; border-radius: 50%;
-    display: grid; place-items: center; cursor: pointer; color: #fff; background: rgba(255, 255, 255, .16); }
-  .lb button .s { width: 18px; height: 18px; }
-  .zoom { cursor: zoom-in; }
+  .lb img { max-width: min(92vw, 720px); max-height: 84vh; border-radius: 4px; background: #fff; }
+  .lb button { all: unset; position: absolute; top: 20px; right: 24px; cursor: pointer; font-size: 14px; color: var(--fg); }
+  .lb button:hover { text-decoration: underline; }
+  .lb button:focus-visible { outline: 1px solid var(--fg); outline-offset: 4px; }
 </style>
 
 <script>
-  // mood: random per load, applied before first paint
   (function () {
-    var m = ['', 'wp-green', 'wp-silver'][Math.floor(Math.random() * 3)];
     var c = document.documentElement.classList;
-    if (m) c.add(m);
     c.add('js');
     // Open on the figure alone — unless a link points straight at a section.
     if (!location.hash || location.hash === '#intro') {
@@ -331,47 +187,40 @@
   })();
 </script>
 
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  <symbol id="i-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7.5 12 13l8.5-5.5"/></g></symbol>
-  <symbol id="i-ig" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none"/></g></symbol>
-  <symbol id="i-bag" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8a3 3 0 0 1 6 0"/></g></symbol>
-  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
-</svg>
-
 <div class="layout">
 
-<!-- ============ stage: the figure, and only the figure ============ -->
 <aside class="stage" aria-label="Jiwon’s minifigure">
-    <div class="hero-card">
-      <button class="tilt" id="tilt" type="button" aria-label="Jiwon Shin — click to say hello">
-        <span class="tilt-card" id="tilt-card">
-          <span class="tilt-floor" aria-hidden="true"></span>
-          <img class="tilt-poster" src="data:image/png;base64,{{MINIFIG_POSTER}}" alt="" draggable="false">
-          <canvas class="tilt-gl" id="tilt-gl" aria-hidden="true"></canvas>
-        </span>
-      </button>
-    </div>
+  <div class="hero-card">
+    <button class="tilt" id="tilt" type="button" aria-label="Jiwon Shin — click to say hello">
+      <span class="tilt-card" id="tilt-card">
+        <span class="tilt-floor" aria-hidden="true"></span>
+        <img class="tilt-poster" src="data:image/png;base64,{{MINIFIG_POSTER}}" alt="" draggable="false">
+        <canvas class="tilt-gl" id="tilt-gl" aria-hidden="true"></canvas>
+      </span>
+    </button>
+  </div>
 </aside>
 
 <main class="page">
 
-  <!-- ============ hero ============ -->
+  <nav class="nav" id="nav" aria-label="Sections">
+    <a href="#intro" data-to="intro">Intro</a>
+    <a href="#school" data-to="school">School</a>
+    <a href="#work" data-to="work">Work</a>
+    <a href="#projects" data-to="projects">Projects</a>
+    <a href="#contact" data-to="contact">Contact</a>
+    <i class="nav-line" id="nav-line" aria-hidden="true"></i>
+  </nav>
+
   <section class="hero" id="intro" data-sec="intro">
     <div class="hero-text">
-      <p class="eyebrow">Designer &amp; Operator · Seoul</p>
-      <h1 class="display">Jiwon<br>Shin</h1>
+      <h1 class="name">Jiwon Shin</h1>
+      <p class="role">Designer &amp; operator, Seoul</p>
       <p class="lede">French major at Kyung Hee who designs, builds, and runs small brands — end&nbsp;to&nbsp;end.</p>
-      <ul class="facts">
-        <li><a href="#school">PARLÉ <span>Founder</span></a></li>
-        <li><a href="#work">On The Ground <span>GM</span></a></li>
-        <li><a href="#projects">francophones.kr <span>Now</span></a></li>
-      </ul>
-      <div class="actions">
-        <a class="btn primary" href="mailto:acrackedwon@gmail.com"><svg class="s"><use href="#i-mail"/></svg>Say bonjour</a>
-        <a class="btn ghost" href="https://instagram.com/acrackedwon" target="_blank" rel="noopener"><svg class="s"><use href="#i-ig"/></svg>acrackedwon</a>
-      </div>
+      <p class="links">
+        <a class="ln" href="mailto:acrackedwon@gmail.com">Email</a>
+        <a class="ln" href="https://instagram.com/acrackedwon" target="_blank" rel="noopener">Instagram</a>
+      </p>
     </div>
   </section>
 
@@ -398,19 +247,23 @@
       addEventListener('resize', place);
     })();
   </script>
-
-  <!-- ============ school ============ -->
   <section class="sec" id="school" data-sec="school">
-    <header class="sec-h"><h2>School</h2><span class="fr" lang="fr">École</span></header>
-    <div class="grid">
-      <a class="tile c6 row" style="--i:0" href="https://france.khu.ac.kr/france/user/main/view.do" target="_blank" rel="noopener">
-        <div class="body"><span class="k">2022.03 –</span><h3>Kyung Hee University</h3><p>Dept. of French Language</p></div>
-        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
-      </a>
+    <h2>School<span lang="fr">École</span></h2>
 
-      <div class="tile c4" style="--i:1">
-        <span class="k">At Kyung Hee · 2023 –</span>
-        <div class="strip" aria-label="PARLÉ posters">
+    <div class="row rv">
+      <p class="when">2022 –</p>
+      <div class="what">
+        <h3><a class="ln" href="https://france.khu.ac.kr/france/user/main/view.do" target="_blank" rel="noopener">Kyung Hee University</a></h3>
+        <p>Dept. of French Language</p>
+      </div>
+    </div>
+
+    <div class="row rv">
+      <p class="when">2023 –</p>
+      <div class="what">
+        <h3>PARLÉ</h3>
+        <p>A French culture club at Kyung Hee. Founder &amp; president — posters, events, all of it.</p>
+        <div class="thumbs" aria-label="PARLÉ posters">
           <img class="zoom" src="{{NP1}}" alt="PARLÉ 1ère réunion poster" loading="lazy">
           <img class="zoom" src="{{NP2}}" alt="PARLÉ wine tasting poster" loading="lazy">
           <img class="zoom" src="{{NP3}}" alt="PARLÉ French film night poster" loading="lazy">
@@ -422,123 +275,118 @@
           <img class="zoom" src="{{NP9}}" alt="PARLÉ board-game night poster" loading="lazy">
           <img class="zoom" src="{{NP10}}" alt="PARLÉ × SDGs rencontre poster" loading="lazy">
         </div>
-        <h3>PARLÉ</h3>
-        <p>A French culture club at KHU. Founder &amp; President — posters, events, the whole thing.</p>
-        <a class="lnk" href="https://instagram.com/khu_parle" target="_blank" rel="noopener"><svg class="s"><use href="#i-ig"/></svg>khu_parle</a>
+        <p class="links"><a class="ln" href="https://instagram.com/khu_parle" target="_blank" rel="noopener">@khu_parle</a></p>
       </div>
+    </div>
 
-      <div class="tile c2" style="--i:2">
-        <span class="k">PARLÉ ×</span>
-        <h3>ddcoréen</h3>
-        <p>Invited 고대영 — an SNS creator teaching Korean across France (TikTok 110k · YouTube 106k).</p>
-        <div class="mini"><img class="zoom" src="{{CONF}}" alt="ddcoréen guest lecture poster"><div><b>Conférence exceptionnelle</b><span>“Shouting Korea from France: learning &amp; cultural exchange in a global age” · 2025.09.23 · Zoom</span></div></div>
-        <div class="mini"><img class="zoom" src="{{LEX}}" alt="PARLÉ × ddcoréen language exchange card"><div><b>Online language exchange</b><span>Card-news series &amp; program pairing Korean &amp; French learners</span></div></div>
-        <a class="lnk" href="https://instagram.com/ddcoreen" target="_blank" rel="noopener"><svg class="s"><use href="#i-ig"/></svg>ddcoreen</a>
-      </div>
-
-      <div class="tile c6 split" style="--i:3">
-        <img class="cover zoom" src="{{LYS_CLEAN}}" alt="Château de Lys — store detail page">
-        <div class="body">
-          <span class="k">At Kyung Hee · Capstone 2025</span>
-          <h3>Château de Lys</h3>
-          <p>A rug brand, taken from design through production to a live store.</p>
-          <div class="lnks">
-            <a class="lnk" href="https://smartstore.naver.com/chateaudelys/products/12001333206" target="_blank" rel="noopener"><svg class="s"><use href="#i-bag"/></svg>Store</a>
-            <a class="lnk" href="https://instagram.com/chateau_de_lys" target="_blank" rel="noopener"><svg class="s"><use href="#i-ig"/></svg>chateau_de_lys</a>
-          </div>
+    <div class="row rv">
+      <p class="when">2025</p>
+      <div class="what">
+        <h3>PARLÉ × ddcoréen</h3>
+        <p>With 고대영 (ddcoréen), who teaches Korean to an audience across France — TikTok 110k, YouTube 106k. A guest lecture, “Shouting Korea from France: learning &amp; cultural exchange in a global age” (Sept. 23, on Zoom), and an online language exchange pairing Korean and French learners.</p>
+        <div class="thumbs">
+          <img class="zoom" src="{{CONF}}" alt="ddcoréen guest lecture poster" loading="lazy">
+          <img class="zoom" src="{{LEX}}" alt="PARLÉ × ddcoréen language exchange card" loading="lazy">
         </div>
+        <p class="links"><a class="ln" href="https://instagram.com/ddcoreen" target="_blank" rel="noopener">@ddcoreen</a></p>
+      </div>
+    </div>
+
+    <div class="row rv">
+      <p class="when">2025</p>
+      <div class="what">
+        <h3>Château de Lys</h3>
+        <p>Capstone. A rug brand, from design through production to a live store.</p>
+        <div class="thumbs"><img class="zoom" src="{{LYS_CLEAN}}" alt="Château de Lys — store detail page" loading="lazy"></div>
+        <p class="links">
+          <a class="ln" href="https://smartstore.naver.com/chateaudelys/products/12001333206" target="_blank" rel="noopener">Store</a>
+          <a class="ln" href="https://instagram.com/chateau_de_lys" target="_blank" rel="noopener">@chateau_de_lys</a>
+        </p>
       </div>
     </div>
   </section>
 
-  <!-- ============ work ============ -->
   <section class="sec" id="work" data-sec="work">
-    <header class="sec-h"><h2>Work</h2><span class="fr" lang="fr">Travail</span></header>
-    <div class="grid">
-      <div class="tile c3 row" style="--i:0">
-        <img class="thumb logo" src="{{LOGO_NEW}}" alt="On The Ground logo">
-        <div class="body"><span class="k">2022.10 –</span><h3>On The Ground</h3><p>General Manager · LP music bar, est. 2010</p></div>
+    <h2>Work<span lang="fr">Travail</span></h2>
+
+    <div class="row rv">
+      <p class="when">2022 –</p>
+      <div class="what">
+        <h3>On The Ground</h3>
+        <p>General manager of an LP music bar in Seoul, est. 2010.</p>
+        <ul class="sub">
+          <li><a class="ln" href="https://otg-bar.vercel.app" target="_blank" rel="noopener">Online 3D bar game</a> <span>— a playable WebGL mini-experience for the bar</span></li>
+          <li>Logo redesign
+            <div class="thumbs">
+              <img class="zoom sq" src="{{LOGO_OLD}}" alt="On The Ground — original logo" loading="lazy">
+              <span class="to" aria-hidden="true">→</span>
+              <img class="zoom sq" src="{{LOGO_NEW}}" alt="On The Ground — redesigned logo" loading="lazy">
+            </div>
+          </li>
+          <li><a class="ln" href="https://naver.me/FgHp8lFH" target="_blank" rel="noopener">Naver Place overhaul</a> <span>— rebuilt the bar’s local map presence</span></li>
+        </ul>
       </div>
-      <a class="tile c3 row" style="--i:1" href="https://otg-bar.vercel.app" target="_blank" rel="noopener">
-        <div class="body"><span class="k">At On The Ground</span><h3>Online 3D bar game</h3><p>Designed &amp; shipped a playable WebGL mini-experience for the bar.</p></div>
-        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
-      </a>
-      <div class="tile c3" style="--i:2">
-        <span class="k">At On The Ground</span>
-        <div class="ba"><img class="zoom" src="{{LOGO_OLD}}" alt="On The Ground — original logo"><svg class="s"><use href="#i-right"/></svg><img class="zoom" src="{{LOGO_NEW}}" alt="On The Ground — redesigned logo"></div>
-        <h3>Logo redesign</h3>
-      </div>
-      <a class="tile c3 row" style="--i:3" href="https://naver.me/FgHp8lFH" target="_blank" rel="noopener">
-        <img class="thumb tall" src="{{NAVER}}" alt="">
-        <div class="body"><span class="k">At On The Ground</span><h3>Naver Place overhaul</h3><p>Rebuilt the bar’s local map presence.</p></div>
-        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
-      </a>
-      <div class="tile c6" style="--i:4">
-        <span class="k">2026.03 · Seoul</span>
+    </div>
+
+    <div class="row rv">
+      <p class="when">2026</p>
+      <div class="what">
         <h3>Maîtres Cuisiniers de France — 70th World Congress</h3>
-        <p>FR ↔ KR interpreter at the French master-chefs’ first world congress held in Asia — for the 140th anniversary of France–Korea relations, with ~200 chefs from 22 countries.</p>
+        <p>FR ↔ KR interpreter, Seoul. The French master chefs’ first world congress in Asia, for the 140th anniversary of France–Korea relations — some 200 chefs from 22 countries.</p>
       </div>
     </div>
   </section>
 
-  <!-- ============ projects ============ -->
   <section class="sec" id="projects" data-sec="projects">
-    <header class="sec-h"><h2>Projects</h2><span class="fr" lang="fr">Projets</span></header>
-    <div class="grid">
-      <a class="tile c6 row" style="--i:0" href="https://francophones.kr" target="_blank" rel="noopener">
-        {{FRANCO_ICON}}
-        <div class="body"><span class="k">Now</span><h3>francophones.kr</h3><p>A community for francophones in Korea — building &amp; running it now.</p></div>
-        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
-      </a>
-      <a class="tile c3 top" style="--i:1" href="https://instagram.com/premillenniumarchive" target="_blank" rel="noopener">
-        <img class="media" src="{{PMA_CLEAN}}" alt="">
-        <span class="k">2021 – 2022</span><h3>PRE-MILLENNIUM ARCHIVE</h3><p>Y2K archive label · Co-founder · Brand &amp; ops</p>
-        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
-      </a>
-      <a class="tile c3 top" style="--i:2" href="https://instagram.com/apresdocx" target="_blank" rel="noopener">
-        <img class="wordmark" src="{{APRESDOCX}}" alt="aprèsdocx">
-        <span class="k">2023.01 – 04</span><h3>aprèsdocx</h3><p>Personal magazine · Founder &amp; editor</p><span class="m">Site currently closed</span>
-        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
-      </a>
+    <h2>Projects<span lang="fr">Projets</span></h2>
+
+    <div class="row rv">
+      <p class="when">Now</p>
+      <div class="what">
+        <h3><a class="ln" href="https://francophones.kr" target="_blank" rel="noopener">francophones.kr</a></h3>
+        <p>A community for francophones in Korea. Building and running it.</p>
+      </div>
+    </div>
+
+    <div class="row rv">
+      <p class="when">2023</p>
+      <div class="what">
+        <h3><a class="ln" href="https://instagram.com/apresdocx" target="_blank" rel="noopener">aprèsdocx</a></h3>
+        <p>A personal magazine. Founder &amp; editor, January–April. The site has since closed.</p>
+      </div>
+    </div>
+
+    <div class="row rv">
+      <p class="when">2021 – 22</p>
+      <div class="what">
+        <h3><a class="ln" href="https://instagram.com/premillenniumarchive" target="_blank" rel="noopener">Pre-Millennium Archive</a></h3>
+        <p>A Y2K archive label. Co-founder — brand and operations.</p>
+      </div>
     </div>
   </section>
 
-  <!-- ============ contact ============ -->
   <section class="sec" id="contact" data-sec="contact">
-    <header class="sec-h"><h2>Contact</h2><span class="fr" lang="fr">Bonjour&nbsp;!</span></header>
-    <p class="hello">Projects, interpreting, or just a hello — the inbox is open.</p>
-    <div class="grid">
-      <a class="tile c3 row" style="--i:0" href="mailto:acrackedwon@gmail.com">
-        <span class="badge"><svg class="s"><use href="#i-mail"/></svg></span>
-        <div class="body"><h3>acrackedwon@gmail.com</h3><p>Mail</p></div>
-        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
-      </a>
-      <a class="tile c3 row" style="--i:1" href="https://instagram.com/acrackedwon" target="_blank" rel="noopener">
-        <span class="badge"><svg class="s"><use href="#i-ig"/></svg></span>
-        <div class="body"><h3>acrackedwon</h3><p>Instagram</p></div>
-        <span class="go"><svg class="s"><use href="#i-arrow"/></svg></span>
-      </a>
+    <h2>Contact<span lang="fr">Bonjour&nbsp;!</span></h2>
+
+    <div class="row rv">
+      <p class="when">Email</p>
+      <div class="what"><h3><a class="ln" href="mailto:acrackedwon@gmail.com">acrackedwon@gmail.com</a></h3></div>
+    </div>
+    <div class="row rv">
+      <p class="when">Instagram</p>
+      <div class="what"><h3><a class="ln" href="https://instagram.com/acrackedwon" target="_blank" rel="noopener">@acrackedwon</a></h3></div>
     </div>
   </section>
 
   <footer>
-    <span>© 2026 Jiwon Shin</span>
-    <span>Minifigure assembled from <a href="https://www.ldraw.org" target="_blank" rel="noopener">LDraw.org</a> parts (CC BY 2.0), rendered with three.js. LEGO® is a trademark of the LEGO Group, which does not sponsor or endorse this site.</span>
+    <p>© 2026 Jiwon Shin</p>
+    <p>Minifigure built from <a href="https://www.ldraw.org" target="_blank" rel="noopener">LDraw.org</a> parts (CC BY 2.0), rendered with three.js. LEGO® is a trademark of the LEGO Group, which does not sponsor or endorse this site.</p>
   </footer>
 </main>
 </div>
 
-<nav class="tabbar" id="tabbar" aria-label="Sections">
-  <span class="bubble" id="bubble" aria-hidden="true"></span>
-  <button class="tab" type="button" data-to="intro" aria-label="Jiwon Shin"><img src="data:image/png;base64,{{IC_ME}}" alt="" draggable="false"></button>
-  <button class="tab" type="button" data-to="school" aria-label="School"><img src="data:image/png;base64,{{IC_SCHOOL}}" alt="" draggable="false"></button>
-  <button class="tab" type="button" data-to="work" aria-label="Work"><img src="data:image/png;base64,{{IC_WORK}}" alt="" draggable="false"></button>
-  <button class="tab" type="button" data-to="projects" aria-label="Projects"><img src="data:image/png;base64,{{IC_PROJECTS}}" alt="" draggable="false"></button>
-  <button class="tab" type="button" data-to="contact" aria-label="Contact"><img src="data:image/png;base64,{{IC_CONTACT}}" alt="" draggable="false"></button>
-</nav>
-
 <div class="lb" id="lb" role="dialog" aria-modal="true" aria-hidden="true">
-  <button type="button" id="lb-x" aria-label="Close"><svg class="s"><use href="#i-x"/></svg></button>
+  <button type="button" id="lb-x">Close</button>
   <img id="lb-img" src="" alt="">
 </div>
 
@@ -547,7 +395,7 @@
 (function () {
   const root = document.documentElement;
   if (!root.classList.contains('intro')) return;
-  const rest = [document.querySelector('.hero-text'), ...document.querySelectorAll('.sec'), document.querySelector('footer'), document.getElementById('tabbar')];
+  const rest = [document.querySelector('.hero-text'), document.getElementById('nav'), ...document.querySelectorAll('.sec'), document.querySelector('footer')];
   rest.forEach(el => el && (el.inert = true));
   window.__enter = () => {
     if (!root.classList.contains('intro')) return false;
@@ -555,44 +403,46 @@
     document.querySelector('.hero-card').style.transform = '';
     rest.forEach(el => el && (el.inert = false));
     if (window.__tiltState) window.__tiltState.enter();
+    requestAnimationFrame(() => window.__navSync && window.__navSync());
     return true;
   };
 })();
 
-/* ---------------- tab bar: scroll spy + sliding bubble ---------------- */
+/* ---------------- nav: scroll spy + sliding hairline ---------------- */
 (function () {
-  const tabs = [...document.querySelectorAll('.tab')];
-  const bubble = document.getElementById('bubble');
-  const secs = tabs.map(t => document.getElementById(t.dataset.to));
+  const links = [...document.querySelectorAll('.nav a')];
+  const line = document.getElementById('nav-line');
+  const secs = links.map(a => document.getElementById(a.dataset.to));
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let current = null;
-  const select = key => {
-    if (key === current) return;
-    current = key;
-    const t = tabs.find(x => x.dataset.to === key);
-    tabs.forEach(x => x.toggleAttribute('aria-current', x === t));
-    bubble.style.width = t.offsetWidth + 'px';
-    bubble.style.transform = 'translateX(' + t.offsetLeft + 'px)';
+  let current = 'intro';
+  const draw = () => {
+    const a = links.find(x => x.dataset.to === current);
+    links.forEach(x => x.toggleAttribute('aria-current', x === a));
+    line.style.width = a.offsetWidth + 'px';
+    line.style.transform = 'translateX(' + a.offsetLeft + 'px)';
   };
-  // The section crossing the middle band of the viewport is the current one.
+  const select = key => { if (key !== current) { current = key; draw(); } };
   const io = new IntersectionObserver(es => {
     es.forEach(e => { if (e.isIntersecting) select(e.target.dataset.sec); });
-  }, { rootMargin: '-45% 0px -50% 0px' });
+  }, { rootMargin: '-40% 0px -55% 0px' });
   secs.forEach(s => io.observe(s));
-  tabs.forEach(t => t.addEventListener('click', () => {
-    select(t.dataset.to);
-    document.getElementById(t.dataset.to).scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+  links.forEach(a => a.addEventListener('click', e => {
+    e.preventDefault();
+    select(a.dataset.to);
+    document.getElementById(a.dataset.to).scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    history.replaceState(null, '', '#' + a.dataset.to);
   }));
-  addEventListener('resize', () => { const k = current; current = null; if (k) select(k); });
-  select('intro');
+  addEventListener('resize', draw);
+  window.__navSync = draw;
+  draw();
 })();
 
-/* ---------------- tile reveal ---------------- */
+/* ---------------- row reveal ---------------- */
 (function () {
   const io = new IntersectionObserver(es => {
     es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-  }, { rootMargin: '0px 0px -8% 0px' });
-  document.querySelectorAll('.tile').forEach(t => io.observe(t));
+  }, { rootMargin: '0px 0px -6% 0px' });
+  document.querySelectorAll('.rv').forEach(t => io.observe(t));
 })();
 
 /* ---------------- photo viewer ---------------- */
@@ -604,7 +454,7 @@
   const close = () => { lb.classList.remove('open'); lb.setAttribute('aria-hidden', 'true'); if (last) last.focus(); };
   document.querySelectorAll('img.zoom').forEach(i => {
     i.tabIndex = 0; i.setAttribute('role', 'button');
-    i.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); open(i); });
+    i.addEventListener('click', e => { e.preventDefault(); open(i); });
     i.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(i); } });
   });
   lb.addEventListener('click', e => { if (e.target === lb) close(); });
@@ -710,6 +560,7 @@
   });
   write();
 })();
+
 </script>
 
 <!-- three.js r170 (MIT) + GLTFLoader, and the rigged minifigure (LDraw parts, CC BY 2.0).
