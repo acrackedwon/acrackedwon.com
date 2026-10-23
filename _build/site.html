@@ -685,21 +685,29 @@ async function boot() {
   const stageEl = document.querySelector('.stage');
   const legR = fig.getObjectByName('Leg_R'), legL = fig.getObjectByName('Leg_L');
   const legRest = { R: legR ? legR.rotation.x : 0, L: legL ? legL.rotation.x : 0 };
-  const TURN = 0.32, STEP_HZ = 1.9, SPEED = 120;      // s, strides/s, px/s
+  const TURN = 0.46, STEP_HZ = 1.9, SPEED = 120;      // s, strides/s, px/s
   let atLeft = false, posX = 0, walk = null, stepPh = 0;
+  /* How much of the idle look-around is in play: 1 while parked, 0 while
+     walking. It moves on a critically damped spring, so it leaves and returns
+     with zero velocity — the hand-off at either end of a walk has no step in
+     position or speed. The idle clock keeps running underneath. */
+  let idleW = 1, idleV = 0;
+  const IDLE_OMEGA = 6;
   const span = () => {
     const r = stageEl.getBoundingClientRect(), cs = getComputedStyle(stageEl);
     return -(innerWidth - r.width - (parseFloat(cs.right) || 10) * 2);
   };
   const place = x => { posX = x; stageEl.style.transform = x ? 'translateX(' + x.toFixed(1) + 'px)' : ''; };
-  const smooth = x => x * x * (3 - 2 * x);
+  // smootherstep: zero velocity AND zero acceleration at both ends, so turns and
+  // slides settle without the little snap smoothstep leaves at the very end
+  const smooth = x => x * x * x * (x * (x * 6 - 15) + 10);
   const restYawFor = left => BASE_YAW * (left ? 1 : -1);   // face the content from either corner
   state.walk = () => {
     if (!botMode.matches || reduced || state.stage < 1) return false;
     if (walk) return true;
     const to = atLeft ? 0 : span();
     const dur = Math.max(1.3, Math.abs(to - posX) / SPEED);
-    walk = { t: 0, from: posX, to, dur, dir: to < posX ? -1 : 1, fromYaw: fig.rotation.y };
+    walk = { t: 0, from: posX, to, dur, dir: to < posX ? -1 : 1, fromYaw: fig.rotation.y - state.x * 0.32 };
     waveT = -1; state.wake();
     return true;
   };
@@ -712,6 +720,18 @@ async function boot() {
     const bot = botMode.matches && !reduced && state.stage >= 1;
     // Face the content: right on PC (figure on the left); on mobile, toward the middle from whichever corner it is in.
     let yaw = (botMode.matches ? restYawFor(atLeft) : BASE_YAW) * state.stage, headYaw = 0, bob = 0, swing = 0, legSwing = 0;
+    // idle layer, faded by idleW
+    if (bot) t += sec;
+    const idleTo = bot && !walk ? 1 : 0;
+    const acc = IDLE_OMEGA * IDLE_OMEGA * (idleTo - idleW) - 2 * IDLE_OMEGA * idleV;
+    idleV += acc * sec; idleW += idleV * sec;
+    if (!bot) { idleW = idleTo; idleV = 0; }
+    const iw = Math.min(1, Math.max(0, idleW));
+    const idleYaw = (Math.sin(t * 0.8) * 0.36 + Math.sin(t * 0.31 + 2) * 0.14) * iw;
+    headYaw = Math.sin(t * 1.15 + 1) * 0.34 * iw;
+    bob = (Math.sin(t * 2.3) + 1) * 0.009 * iw;
+    swing = Math.sin(t * 2.3) * 0.16 * iw;
+
     if (walk) {
       walk.t += sec;
       const face = walk.dir * Math.PI / 2;                 // side-on, heading for the far corner
@@ -722,11 +742,12 @@ async function boot() {
         const u = (walk.t - t1) / walk.dur;
         place(walk.from + (walk.to - walk.from) * smooth(u));
         yaw = face;
-        const env = Math.min(1, (walk.t - t1) / 0.2, (t2 - walk.t) / 0.2);   // ease into and out of the stride
+        // ease into and out of the stride (smoothstep, so it starts and ends at rest)
+        const env = smooth(Math.min(1, (walk.t - t1) / 0.25, (t2 - walk.t) / 0.25));
         stepPh += sec * 2 * Math.PI * STEP_HZ;
         legSwing = Math.sin(stepPh) * 0.55 * env;
-        swing = -Math.sin(stepPh) * 0.45 * env;
-        bob = Math.abs(Math.sin(stepPh)) * 0.022 * env;
+        swing += -Math.sin(stepPh) * 0.45 * env;
+        bob += Math.abs(Math.sin(stepPh)) * 0.022 * env;
       } else if (walk.t < t3) {
         place(walk.to);
         yaw = face + (restYawFor(walk.to !== 0) - face) * smooth((walk.t - t2) / TURN);
@@ -735,12 +756,8 @@ async function boot() {
         yaw = restYawFor(atLeft);
       }
     } else if (bot) {
-      t += sec;
-      yaw += Math.sin(t * 0.8) * 0.36 + Math.sin(t * 0.31 + 2) * 0.14;
-      headYaw = Math.sin(t * 1.15 + 1) * 0.34;
-      bob = (Math.sin(t * 2.3) + 1) * 0.009;
-      swing = Math.sin(t * 2.3) * 0.16;
-      if (t > nextWave && waveT < 0) { state.wave(); nextWave = t + 9 + Math.random() * 6; }
+      yaw += idleYaw;
+      if (t > nextWave && waveT < 0 && iw > 0.95) { state.wave(); nextWave = t + 9 + Math.random() * 6; }
     }
     fig.rotation.y = yaw + state.x * 0.32;   // 0 = facing you
     fig.rotation.x = state.y * 0.06;
