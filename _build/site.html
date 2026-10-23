@@ -554,8 +554,11 @@
     on = true; targets(); kick();
   });
   // First click leaves the intro (and waves hello); later clicks just wave.
+  // First click leaves the intro (and waves hello). After that a tap on the
+  // mobile bot sends it walking to the other corner; on PC it just waves.
   frame.addEventListener('click', () => {
-    if (window.__enter) window.__enter();
+    const entered = window.__enter ? window.__enter() : false;
+    if (!entered && state.walk && state.walk()) return;
     if (state.wave) state.wave();
   });
   write();
@@ -673,15 +676,65 @@ async function boot() {
   const botMode = matchMedia('(max-width: 899px)');
   let t = 0, nextWave = 8;
 
+  /* Walking (mobile only): a tap turns the bot side-on toward the far corner,
+     walks it across the bottom of the screen — legs and arms swinging in
+     opposition, a little bounce on every step — then stops and turns back to
+     face the content from its new corner. The stage element is what moves; the
+     figure walks in place inside it, so the step cycle and the slide are driven
+     from the same clock. Taps while walking are ignored. */
+  const stageEl = document.querySelector('.stage');
+  const legR = fig.getObjectByName('Leg_R'), legL = fig.getObjectByName('Leg_L');
+  const legRest = { R: legR ? legR.rotation.x : 0, L: legL ? legL.rotation.x : 0 };
+  const TURN = 0.32, STEP_HZ = 1.9, SPEED = 120;      // s, strides/s, px/s
+  let atLeft = false, posX = 0, walk = null, stepPh = 0;
+  const span = () => {
+    const r = stageEl.getBoundingClientRect(), cs = getComputedStyle(stageEl);
+    return -(innerWidth - r.width - (parseFloat(cs.right) || 10) * 2);
+  };
+  const place = x => { posX = x; stageEl.style.transform = x ? 'translateX(' + x.toFixed(1) + 'px)' : ''; };
+  const smooth = x => x * x * (3 - 2 * x);
+  const restYawFor = left => BASE_YAW * (left ? 1 : -1);   // face the content from either corner
+  state.walk = () => {
+    if (!botMode.matches || reduced || state.stage < 1) return false;
+    if (walk) return true;
+    const to = atLeft ? 0 : span();
+    const dur = Math.max(1.3, Math.abs(to - posX) / SPEED);
+    walk = { t: 0, from: posX, to, dur, dir: to < posX ? -1 : 1, fromYaw: fig.rotation.y };
+    waveT = -1; state.wake();
+    return true;
+  };
+  addEventListener('resize', () => { if (!botMode.matches) { atLeft = false; walk = null; place(0); } else if (atLeft && !walk) place(span()); });
+
   state.onFrame = dt => {
     if (!visible) return false;
     resize();
     const sec = (dt * 16.67) / 1000;
     const bot = botMode.matches && !reduced && state.stage >= 1;
-    // Face the content: right on PC (figure on the left), left on mobile (figure in the right corner).
-    const side = botMode.matches ? -1 : 1;
-    let yaw = BASE_YAW * side * state.stage, headYaw = 0, bob = 0, swing = 0;
-    if (bot) {
+    // Face the content: right on PC (figure on the left); on mobile, toward the middle from whichever corner it is in.
+    let yaw = (botMode.matches ? restYawFor(atLeft) : BASE_YAW) * state.stage, headYaw = 0, bob = 0, swing = 0, legSwing = 0;
+    if (walk) {
+      walk.t += sec;
+      const face = walk.dir * Math.PI / 2;                 // side-on, heading for the far corner
+      const t1 = TURN, t2 = TURN + walk.dur, t3 = t2 + TURN;
+      if (walk.t < t1) {
+        yaw = walk.fromYaw + (face - walk.fromYaw) * smooth(walk.t / t1);
+      } else if (walk.t < t2) {
+        const u = (walk.t - t1) / walk.dur;
+        place(walk.from + (walk.to - walk.from) * smooth(u));
+        yaw = face;
+        const env = Math.min(1, (walk.t - t1) / 0.2, (t2 - walk.t) / 0.2);   // ease into and out of the stride
+        stepPh += sec * 2 * Math.PI * STEP_HZ;
+        legSwing = Math.sin(stepPh) * 0.55 * env;
+        swing = -Math.sin(stepPh) * 0.45 * env;
+        bob = Math.abs(Math.sin(stepPh)) * 0.022 * env;
+      } else if (walk.t < t3) {
+        place(walk.to);
+        yaw = face + (restYawFor(walk.to !== 0) - face) * smooth((walk.t - t2) / TURN);
+      } else {
+        place(walk.to); atLeft = walk.to !== 0; walk = null; stepPh = 0;
+        yaw = restYawFor(atLeft);
+      }
+    } else if (bot) {
       t += sec;
       yaw += Math.sin(t * 0.8) * 0.36 + Math.sin(t * 0.31 + 2) * 0.14;
       headYaw = Math.sin(t * 1.15 + 1) * 0.34;
@@ -699,8 +752,10 @@ async function boot() {
     if (armR) armR.rotation.x = armRest.R + swing * (1 - k) + (w ? w.arm : 0);
     if (armL) armL.rotation.x = armRest.L - swing;
     if (armR) armR.rotation.z = armRestZ + (w ? w.side : 0);
+    if (legR) legR.rotation.x = legRest.R + legSwing;
+    if (legL) legL.rotation.x = legRest.L - legSwing;
     renderer.render(scene, cam);
-    return waveT >= 0 || bot;
+    return waveT >= 0 || bot || !!walk;
   };
   botMode.addEventListener('change', () => state.wake());
   state.wave = () => {
