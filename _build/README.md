@@ -17,6 +17,11 @@ edit the source here and rebuild.
   and kept where WebGL is unavailable.
 - `vendor/` — three.js r170 (`three.module.min.js`, `GLTFLoader.js`, `BufferGeometryUtils.js`;
   MIT, see `three.LICENSE`). Inlined as inert text and loaded as modules through blob URLs.
+- `fonts/` — `inter.woff2` + `pretendard.woff2`, subsets cut from `fonts/src/` by
+  `gen_fonts.py` (SIL OFL 1.1, see `fonts/OFL.txt`). Apple devices use the system SF Pro;
+  everything else gets Inter tracked 0.01em tighter (`html.inter`, `--tk`). The Pretendard
+  subset holds only the Hangul in `site.html` — `build.py` warns when it needs a rerun
+  (`pip install fonttools brotli`, then `python3 _build/gen_fonts.py`).
 
 Not used by the current design, kept for reference: `wp_*.b64.txt` + `gen_bg.py` (gradient
 wallpapers), `roboto_round.b64.txt`, `icons.b64.json` + `gen_icons.py` (app icons from the

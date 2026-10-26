@@ -40,6 +40,9 @@ def main():
         "THREE_JS": read("vendor/three.module.min.js"),
         "BGU_JS": read("vendor/BufferGeometryUtils.js"),
         "GLTF_JS": read("vendor/GLTFLoader.js"),
+        # web fonts (subsets cut by gen_fonts.py)
+        "INTER_WOFF2": b64file("fonts/inter.woff2"),
+        "PRETENDARD_WOFF2": b64file("fonts/pretendard.woff2"),
     }
     rep.update({"NP%d" % i: a["NP%d" % i] for i in range(1, 11)})
 
@@ -47,6 +50,10 @@ def main():
         assert "</script" not in rep[k].lower(), k + " would close its <script> early"
 
     html = read(TEMPLATE)
+    have = set(read("fonts/pretendard-chars.txt").strip())
+    new = {c for c in html if 0xAC00 <= ord(c) <= 0xD7A3} - have
+    if new:
+        print("warning: Hangul not in the Pretendard subset (rerun gen_fonts.py):", "".join(sorted(new)))
     used = set(re.findall(r"\{\{([A-Z0-9_]+)\}\}", html))
     missing = used - rep.keys()
     assert not missing, "no value for placeholder(s): " + ", ".join(sorted(missing))
