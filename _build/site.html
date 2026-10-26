@@ -684,7 +684,6 @@
     at = { x: clamp(p.x + dir[0], -1, 1), y: clamp(p.y + dir[1], -1, 1) };
     on = true; targets(); kick();
   });
-  // First click leaves the intro (and waves hello); later clicks just wave.
   // First click leaves the intro (and waves hello). After that a tap on the
   // mobile bot sends it walking to the other corner; on PC it just waves.
   frame.addEventListener('click', () => {
@@ -736,7 +735,7 @@ async function boot() {
   const fig = gltf.scene;
   fig.scale.setScalar(25);
   const head = fig.getObjectByName('Head');
-  const headRest = head ? head.rotation.y : 0;
+  const headRest = head ? head.rotation.y : 0, headRestX = head ? head.rotation.x : 0;
   const armR = fig.getObjectByName('Arm_R'), armL = fig.getObjectByName('Arm_L');
   const armRest = { R: armR ? armR.rotation.x : 0, L: armL ? armL.rotation.x : 0 };
   const figRestY = fig.position.y;
@@ -848,10 +847,60 @@ async function boot() {
   };
   addEventListener('resize', () => { if (!botMode.matches) { atLeft = false; walk = null; place(0); } else if (atLeft && !walk) place(span()); });
 
+  /* PC: the figure follows the reading. Whichever entry sits nearest the
+     reading line (a little above mid-screen) is the one it looks at — head
+     turned and tilted toward it, tracking it as it scrolls — until the next
+     entry is clearly closer to the line; then the gaze moves on. The glance
+     runs on a critically damped spring, so it leaves and lands softly. The
+     head does most of the turning, the body follows a little. Mobile keeps
+     its own look-around. */
+  const lookables = [...document.querySelectorAll('.hero-text .name, .sec h2, .row, .film')];
+  const LINE = 0.42, HOLD_PX = 48;          // reading line (fraction of viewport height); how much closer the next entry must be
+  const EYE = 0.9;                          // virtual eye-to-screen distance, × viewport height
+  const GAZE_OMEGA = 7, BODY_SHARE = 0.25;
+  const gaze = { yaw: 0, pitch: 0, vy: 0, vp: 0 };   // offsets from the rest pose, on a spring
+  let looking = null;
+  const faceC = new THREE.Vector3();
+  if (head) {                               // the face's centre, in the head's own frame
+    fig.updateMatrixWorld(true);
+    head.worldToLocal(new THREE.Box3().setFromObject(head).getCenter(faceC));
+  }
+  const pickLook = () => {
+    const line = innerHeight * LINE;
+    let best = null, bd = Infinity, cur = Infinity;
+    for (const el of lookables) {
+      const r = el.getBoundingClientRect();
+      if (!r.height || r.bottom < 0 || r.top > innerHeight) continue;
+      const d = Math.abs(r.top + Math.min(r.height, 120) / 2 - line);   // anchor on the entry's first lines
+      if (d < bd) { bd = d; best = el; }
+      if (el === looking) cur = d;
+    }
+    return looking && cur - bd < HOLD_PX ? looking : best;
+  };
+  const gazeStep = sec => {
+    let ty = 0, tp = 0;
+    looking = head && !botMode.matches && !reduced && state.stage > 0 ? pickLook() : null;
+    if (looking) {
+      const r = looking.getBoundingClientRect(), c = canvas.getBoundingClientRect();
+      const p = head.localToWorld(faceC.clone()).project(cam);
+      const hx = c.left + (p.x + 1) / 2 * c.width, hy = c.top + (1 - p.y) / 2 * c.height;
+      const tx = r.left + Math.min(r.width * 0.3, 120), tyPx = r.top + Math.min(r.height, 120) / 2;
+      const dist = EYE * innerHeight;
+      ty = Math.max(-0.75, Math.min(0.75, -Math.atan2(tx - hx, dist) - BASE_YAW));   // − = toward screen right
+      tp = Math.max(-0.2, Math.min(0.24, 0.8 * Math.atan2(tyPx - hy, dist)));        // + = chin down; kept small, a minifig neck is short
+    }
+    const O = GAZE_OMEGA;
+    gaze.vy += (O * O * (ty - gaze.yaw) - 2 * O * gaze.vy) * sec; gaze.yaw += gaze.vy * sec;
+    gaze.vp += (O * O * (tp - gaze.pitch) - 2 * O * gaze.vp) * sec; gaze.pitch += gaze.vp * sec;
+    return Math.abs(ty - gaze.yaw) + Math.abs(tp - gaze.pitch) + Math.abs(gaze.vy) + Math.abs(gaze.vp) > 1e-3;
+  };
+  addEventListener('scroll', () => { if (!botMode.matches) state.wake(); }, { passive: true });
+
   state.onFrame = dt => {
     if (!visible) return false;
     resize();
     const sec = (dt * 16.67) / 1000;
+    const gazing = gazeStep(sec);
     const bot = botMode.matches && !reduced && state.stage >= 1;
     // Face the content: right on PC (figure on the left); on mobile, toward the middle from whichever corner it is in.
     let yaw = (botMode.matches ? restYawFor(atLeft) : BASE_YAW) * state.stage, headYaw = 0, bob = 0, swing = 0, legSwing = 0;
@@ -894,10 +943,13 @@ async function boot() {
       yaw += idleYaw;
       if (t > nextWave && waveT < 0 && iw > 0.95) { state.wave(); nextWave = t + 9 + Math.random() * 6; }
     }
+    yaw += gaze.yaw * BODY_SHARE * state.stage;
+    headYaw += gaze.yaw * (1 - BODY_SHARE) * state.stage;
     fig.rotation.y = yaw + state.x * 0.32;   // 0 = facing you
     fig.rotation.x = state.y * 0.06;
     fig.position.y = figRestY + bob;
     if (head) head.rotation.y = headRest + headYaw + state.x * 0.45;
+    if (head) head.rotation.x = headRestX + gaze.pitch * state.stage;
     let w = null;
     if (waveT >= 0) { waveT += sec; if (waveT >= WAVE) waveT = -1; else w = wavePose(waveT); }
     const k = w ? w.weight : 0;                       // the idle swing yields to the wave
@@ -907,7 +959,7 @@ async function boot() {
     if (legR) legR.rotation.x = legRest.R + legSwing;
     if (legL) legL.rotation.x = legRest.L - legSwing;
     renderer.render(scene, cam);
-    return waveT >= 0 || bot || !!walk;
+    return waveT >= 0 || bot || !!walk || gazing;
   };
   botMode.addEventListener('change', () => state.wake());
   state.wave = () => {
