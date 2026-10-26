@@ -847,17 +847,20 @@ async function boot() {
   };
   addEventListener('resize', () => { if (!botMode.matches) { atLeft = false; walk = null; place(0); } else if (atLeft && !walk) place(span()); });
 
-  /* PC: the figure follows the reading. Whichever entry sits nearest the
-     reading line (a little above mid-screen) is the one it looks at — head
-     turned and tilted toward it, tracking it as it scrolls — until the next
-     entry is clearly closer to the line; then the gaze moves on. The glance
-     runs on a critically damped spring, so it leaves and lands softly. The
-     head does most of the turning, the body follows a little. Mobile keeps
-     its own look-around. */
-  const lookables = [...document.querySelectorAll('.hero-text .name, .sec h2, .row, .film')];
-  const LINE = 0.42, HOLD_PX = 48;          // reading line (fraction of viewport height); how much closer the next entry must be
-  const EYE = 0.9;                          // virtual eye-to-screen distance, × viewport height
-  const GAZE_OMEGA = 7, BODY_SHARE = 0.25;
+  /* PC: the figure follows the reading, section by section. Whichever
+     section title sits nearest the reading line (a little above mid-screen)
+     is the one it looks at — turned well round toward it and tilted up or
+     down to it, tracking it as it scrolls — until the next title is clearly
+     closer to the line; then the gaze moves on. The title lives in the same
+     plane as the figure, so to read it the figure has to turn most of the
+     way side-on: the eye distance is short, and the body turns with the
+     head. The glance runs on a critically damped spring, so it leaves and
+     lands softly. Mobile keeps its own look-around. */
+  const lookables = [...document.querySelectorAll('.sec h2')];
+  const LINE = 0.42, HOLD_PX = 48;          // reading line (fraction of viewport height); how much closer the next title must be
+  const EYE = 0.35;                         // virtual eye-to-screen distance, × viewport height
+  const GAZE_OMEGA = 6, BODY_SHARE = 0.4;
+  if (head) head.rotation.order = 'YXZ';    // turn, then nod about the head's own axis (rest pose is all zeros)
   const gaze = { yaw: 0, pitch: 0, vy: 0, vp: 0 };   // offsets from the rest pose, on a spring
   let looking = null;
   const faceC = new THREE.Vector3();
@@ -871,7 +874,7 @@ async function boot() {
     for (const el of lookables) {
       const r = el.getBoundingClientRect();
       if (!r.height || r.bottom < 0 || r.top > innerHeight) continue;
-      const d = Math.abs(r.top + Math.min(r.height, 120) / 2 - line);   // anchor on the entry's first lines
+      const d = Math.abs(r.top + r.height / 2 - line);
       if (d < bd) { bd = d; best = el; }
       if (el === looking) cur = d;
     }
@@ -884,10 +887,10 @@ async function boot() {
       const r = looking.getBoundingClientRect(), c = canvas.getBoundingClientRect();
       const p = head.localToWorld(faceC.clone()).project(cam);
       const hx = c.left + (p.x + 1) / 2 * c.width, hy = c.top + (1 - p.y) / 2 * c.height;
-      const tx = r.left + Math.min(r.width * 0.3, 120), tyPx = r.top + Math.min(r.height, 120) / 2;
-      const dist = EYE * innerHeight;
-      ty = Math.max(-0.75, Math.min(0.75, -Math.atan2(tx - hx, dist) - BASE_YAW));   // − = toward screen right
-      tp = Math.max(-0.2, Math.min(0.24, 0.8 * Math.atan2(tyPx - hy, dist)));        // + = chin down; kept small, a minifig neck is short
+      const dx = r.left + 40 - hx, dy = r.top + r.height / 2 - hy;     // the title's first word
+      const eye = EYE * innerHeight;
+      ty = Math.max(-1.25, Math.min(0.3, -Math.atan2(dx, eye))) - BASE_YAW;          // − = toward screen right
+      tp = Math.max(-0.22, Math.min(0.26, Math.atan2(dy, Math.hypot(dx, eye))));     // + = chin down; a minifig neck is short
     }
     const O = GAZE_OMEGA;
     gaze.vy += (O * O * (ty - gaze.yaw) - 2 * O * gaze.vy) * sec; gaze.yaw += gaze.vy * sec;
