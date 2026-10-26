@@ -713,7 +713,11 @@ const state = window.__tiltState;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const probe = document.createElement('canvas');
-const supported = !!(probe.getContext('webgl2') || probe.getContext('webgl'));
+const probeGL = probe.getContext('webgl2') || probe.getContext('webgl');
+const supported = !!probeGL;
+// Hand the probe's context straight back: browsers cap live WebGL contexts
+// (Safari especially, and old ones can linger across a reload).
+if (probeGL) { const ext = probeGL.getExtension('WEBGL_lose_context'); if (ext) ext.loseContext(); }
 
 async function boot() {
   const txt = id => document.getElementById(id).textContent;
@@ -911,10 +915,30 @@ async function boot() {
     waveT = 0; state.wake();
   };
 
+  /* Only swap the poster out for the canvas once the canvas really shows the
+     figure. A context the browser gives out and then takes away (Safari after
+     a reload, a GPU reset, a background tab) leaves an empty canvas; when that
+     happens fall back to the poster, and swap back once it is restored. */
+  const gl = renderer.getContext();
+  const painted = () => {
+    // a 1px column down the middle, read right after drawing: any opaque pixel = figure is there
+    const px = new Uint8Array(4 * h);
+    gl.readPixels(w >> 1, 0, 1, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    for (let i = 3; i < px.length; i += 4) if (px[i]) return true;
+    return false;
+  };
+  const show = () => {
+    if (renderer.getContext().isContextLost()) return card.classList.remove('live');
+    resize(); renderer.render(scene, cam);
+    card.classList.toggle('live', painted());
+  };
+  canvas.addEventListener('webglcontextlost', () => card.classList.remove('live'));
+  canvas.addEventListener('webglcontextrestored', () => requestAnimationFrame(() => { show(); state.wake(); }));
+  addEventListener('pageshow', e => { if (e.persisted) show(); });   // back/forward cache
+
   fig.rotation.y = BASE_YAW * (matchMedia('(max-width: 899px)').matches ? -1 : 1) * state.stage;
-  resize(); renderer.render(scene, cam);
+  show();
   if (state.stage >= 1) state.wake();   // deep link: no intro, start the bot straight away
-  card.classList.add('live');
 }
 
 if (supported) {
