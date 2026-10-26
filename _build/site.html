@@ -754,7 +754,7 @@ async function boot() {
   const cam = new THREE.PerspectiveCamera(26, 13 / 16, 0.01, 50);
   cam.position.set(ctr.x, ctr.y + size.y * 0.06, ctr.z + size.y * 3.05);
   cam.lookAt(ctr.x, ctr.y - size.y * 0.02, ctr.z);
-  const BASE_YAW = -0.32;
+  const BASE_YAW = 0.32;                   // + = turned toward screen right
 
   /* The wave, done by hand rather than with the rig's baked clip (which snapped
      the arm up linearly in 0.4s, parked the hand on top of the hair and twisted
@@ -889,7 +889,7 @@ async function boot() {
       const hx = c.left + (p.x + 1) / 2 * c.width, hy = c.top + (1 - p.y) / 2 * c.height;
       const dx = r.left + 40 - hx, dy = r.top + r.height / 2 - hy;     // the title's first word
       const eye = EYE * innerHeight;
-      ty = Math.max(-1.25, Math.min(0.3, -Math.atan2(dx, eye))) - BASE_YAW;          // − = toward screen right
+      ty = Math.max(-0.3, Math.min(1.25, Math.atan2(dx, eye))) - BASE_YAW;           // + = toward screen right
       tp = Math.max(-0.22, Math.min(0.26, Math.atan2(dy, Math.hypot(dx, eye))));     // + = chin down; a minifig neck is short
     }
     const O = GAZE_OMEGA;
