@@ -101,6 +101,11 @@
   }
   @media (prefers-reduced-motion: reduce) { .nav-line { transition: none; } }
   @media (max-width: 899px) { .nav { margin: 0 -24px; padding-left: 24px; padding-right: 24px; } }
+  /* six items: tighten on small phones, and on the very narrowest let the row scroll sideways */
+  @media (max-width: 420px) {
+    .nav { gap: 15px; font-size: 13.5px; overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
+    .nav::-webkit-scrollbar { display: none; }
+  }
 
   /* ---------------- hero ---------------- */
   .hero {
@@ -155,6 +160,42 @@
   .thumbs .to { align-self: center; color: var(--fg-3); font-size: 13px; padding: 0 2px; }
   .thumbs img:focus-visible { outline: 1px solid var(--fg); outline-offset: 2px; }
 
+  /* films: a two-up grid of 16:9 stills; tap plays in place */
+  .films-note { margin-top: 16px; font-size: 15px; color: var(--fg-2); }
+  .films { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 16px; padding-top: 18px; }
+  @media (max-width: 560px) { .films { grid-template-columns: 1fr; } }
+  .film { all: unset; display: block; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .film-frame { position: relative; display: block; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 4px; background: #e2e2df; }
+  .film-frame img { width: 100%; height: 100%; object-fit: cover; transition: transform .7s var(--ease-out); }
+  .film:hover .film-frame img { transform: scale(1.025); }
+  .film-play {
+    position: absolute; left: 10px; bottom: 10px; width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center; background: rgba(255, 255, 255, .92); color: #111;
+    transition: transform .3s var(--ease-out);
+  }
+  .film-play svg { width: 11px; height: 11px; margin-left: 2px; }
+  .film:hover .film-play { transform: scale(1.08); }
+  .film:focus-visible .film-frame { outline: 1px solid var(--fg); outline-offset: 3px; }
+  .film-cap { display: grid; grid-template-columns: auto 1fr; gap: 0 10px; margin-top: 10px; }
+  .film-cap .n { grid-row: span 2; font-size: 14px; color: var(--fg-3); font-variant-numeric: tabular-nums; line-height: 1.45; }
+  .film-cap .t { font-size: 15px; font-weight: 600; letter-spacing: -.02em; line-height: 1.45; }
+  .film-cap .b { font-size: 14px; color: var(--fg-2); }
+
+  /* video player: same quiet sheet as the photo viewer */
+  .vm { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: clamp(16px, 5vw, 64px);
+    background: var(--nav-bg); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+  .vm.open { opacity: 1; pointer-events: auto; }
+  .vm-box { width: min(100%, 1040px); }
+  .vm-frame { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 4px; overflow: hidden; }
+  .vm-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .vm-bar { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-top: 12px; font-size: 14px; }
+  .vm-bar .vm-t { font-weight: 600; letter-spacing: -.015em; }
+  .vm-bar .vm-r { display: flex; gap: 20px; flex: none; }
+  .vm-bar button { all: unset; cursor: pointer; }
+  .vm-bar button:hover { text-decoration: underline; }
+  .vm-bar button:focus-visible { outline: 1px solid var(--fg); outline-offset: 4px; }
+
   footer { margin-top: 72px; font-size: 12px; line-height: 1.6; color: var(--fg-3); }
   footer p + p { margin-top: 4px; }
   footer a { border-bottom: 1px solid var(--line); }
@@ -208,6 +249,7 @@
     <a href="#school" data-to="school">School</a>
     <a href="#work" data-to="work">Work</a>
     <a href="#projects" data-to="projects">Projects</a>
+    <a href="#films" data-to="films">Films</a>
     <a href="#contact" data-to="contact">Contact</a>
     <i class="nav-line" id="nav-line" aria-hidden="true"></i>
   </nav>
@@ -365,6 +407,41 @@
     </div>
   </section>
 
+  <section class="sec" id="films" data-sec="films">
+    <h2>Films<span lang="fr">Essais</span></h2>
+    <p class="films-note">Spec ads, made with AI.</p>
+    <div class="films">
+      <button class="film rv" type="button" data-yt="rgAx3cuZb-0" data-title="세상에서 가장 먼 거리에서도" aria-label="Play “세상에서 가장 먼 거리에서도”, 하나손해보험">
+        <span class="film-frame">
+          <img src="https://i.ytimg.com/vi/rgAx3cuZb-0/sddefault.jpg" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/rgAx3cuZb-0/hqdefault.jpg'">
+          <span class="film-play" aria-hidden="true"><svg viewBox="0 0 10 12"><path d="M0 0l10 6-10 6z" fill="currentColor"/></svg></span>
+        </span>
+        <span class="film-cap"><span class="n">01</span><span class="t" lang="ko">세상에서 가장 먼 거리에서도</span><span class="b" lang="ko">하나손해보험</span></span>
+      </button>
+      <button class="film rv" type="button" data-yt="h0p4JWOr5tU" data-title="당신의 그 별 생각까지" aria-label="Play “당신의 그 별 생각까지”, 하나손해보험">
+        <span class="film-frame">
+          <img src="https://i.ytimg.com/vi/h0p4JWOr5tU/sddefault.jpg" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/h0p4JWOr5tU/hqdefault.jpg'">
+          <span class="film-play" aria-hidden="true"><svg viewBox="0 0 10 12"><path d="M0 0l10 6-10 6z" fill="currentColor"/></svg></span>
+        </span>
+        <span class="film-cap"><span class="n">02</span><span class="t" lang="ko">당신의 그 별 생각까지</span><span class="b" lang="ko">하나손해보험</span></span>
+      </button>
+      <button class="film rv" type="button" data-yt="OjVW9fuhWLs" data-title="그게 뭔 소리야" aria-label="Play “그게 뭔 소리야”, 넾다세일">
+        <span class="film-frame">
+          <img src="https://i.ytimg.com/vi/OjVW9fuhWLs/sddefault.jpg" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/OjVW9fuhWLs/hqdefault.jpg'">
+          <span class="film-play" aria-hidden="true"><svg viewBox="0 0 10 12"><path d="M0 0l10 6-10 6z" fill="currentColor"/></svg></span>
+        </span>
+        <span class="film-cap"><span class="n">03</span><span class="t" lang="ko">그게 뭔 소리야</span><span class="b" lang="ko">넾다세일</span></span>
+      </button>
+      <button class="film rv" type="button" data-yt="pQ0ETaaVLVE" data-title="진짜 거대한 혜택" aria-label="Play “진짜 거대한 혜택”, 넾다세일">
+        <span class="film-frame">
+          <img src="https://i.ytimg.com/vi/pQ0ETaaVLVE/sddefault.jpg" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/pQ0ETaaVLVE/hqdefault.jpg'">
+          <span class="film-play" aria-hidden="true"><svg viewBox="0 0 10 12"><path d="M0 0l10 6-10 6z" fill="currentColor"/></svg></span>
+        </span>
+        <span class="film-cap"><span class="n">04</span><span class="t" lang="ko">진짜 거대한 혜택</span><span class="b" lang="ko">넾다세일</span></span>
+      </button>
+    </div>
+  </section>
+
   <section class="sec" id="contact" data-sec="contact">
     <h2>Contact<span lang="fr">Bonjour&nbsp;!</span></h2>
 
@@ -383,6 +460,13 @@
     <p>Minifigure built from <a href="https://www.ldraw.org" target="_blank" rel="noopener">LDraw.org</a> parts (CC BY 2.0), rendered with three.js. LEGO® is a trademark of the LEGO Group, which does not sponsor or endorse this site.</p>
   </footer>
 </main>
+</div>
+
+<div class="vm" id="vm" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="vm-t">
+  <div class="vm-box">
+    <div class="vm-frame" id="vm-frame"></div>
+    <div class="vm-bar"><span class="vm-t" id="vm-t" lang="ko"></span><span class="vm-r"><a class="ln" id="vm-yt" href="#" target="_blank" rel="noopener">YouTube</a><button type="button" id="vm-x">Close</button></span></div>
+  </div>
 </div>
 
 <div class="lb" id="lb" role="dialog" aria-modal="true" aria-hidden="true">
@@ -443,6 +527,34 @@
     es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
   }, { rootMargin: '0px 0px -6% 0px' });
   document.querySelectorAll('.rv').forEach(t => io.observe(t));
+})();
+
+/* ---------------- film player ----------------
+   The iframe is created on open and removed on close, so nothing from
+   YouTube loads until someone asks for it, and closing stops playback. */
+(function () {
+  const vm = document.getElementById('vm'), box = document.getElementById('vm-frame');
+  const yt = document.getElementById('vm-yt'), x = document.getElementById('vm-x'), ttl = document.getElementById('vm-t');
+  let last = null;
+  const open = b => {
+    last = document.activeElement;
+    const id = b.dataset.yt, f = document.createElement('iframe');
+    f.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0&playsinline=1';
+    f.title = b.dataset.title; f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen'; f.allowFullscreen = true;
+    box.replaceChildren(f);
+    ttl.textContent = b.dataset.title;
+    yt.href = 'https://youtu.be/' + id;
+    vm.classList.add('open'); vm.setAttribute('aria-hidden', 'false'); x.focus();
+  };
+  const close = () => {
+    vm.classList.remove('open'); vm.setAttribute('aria-hidden', 'true');
+    setTimeout(() => { if (!vm.classList.contains('open')) box.replaceChildren(); }, 260);
+    if (last) last.focus();
+  };
+  document.querySelectorAll('.film').forEach(b => b.addEventListener('click', () => open(b)));
+  x.addEventListener('click', close);
+  vm.addEventListener('click', e => { if (e.target === vm) close(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && vm.classList.contains('open')) close(); });
 })();
 
 /* ---------------- photo viewer ---------------- */
