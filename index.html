@@ -6976,6 +6976,18 @@ async function boot() {
   const EYE = 0.35;                         // virtual eye-to-screen distance, × viewport height
   const GAZE_OMEGA = 6, BODY_SHARE = 0.4;
   if (head) head.rotation.order = 'YXZ';    // turn, then nod about the head's own axis (rest pose is all zeros)
+  /* The rig's head pivot sits up near the top of the head, so nodding about
+     it swings the chin through the collar like a broken neck. Nod about a
+     point just above the bottom of the head instead — where a neck would
+     bend — by moving the head to keep that point still. */
+  const headRestPos = head ? head.position.clone() : null;
+  const neck = new THREE.Vector3();
+  if (head) {
+    fig.updateMatrixWorld(true);
+    const inv = head.matrixWorld.clone().invert(), hb = new THREE.Box3().setFromObject(head);
+    const y0 = hb.min.clone().applyMatrix4(inv).y, y1 = hb.max.clone().applyMatrix4(inv).y;
+    neck.set(0, Math.min(y0, y1) + 0.12 * Math.abs(y1 - y0), 0);
+  }
   const gaze = { yaw: 0, pitch: 0, vy: 0, vp: 0 };   // offsets from the rest pose, on a spring
   let looking = null;
   const faceC = new THREE.Vector3();
@@ -7005,7 +7017,7 @@ async function boot() {
       const dx = r.left + 40 - hx, dy = r.top + r.height / 2 - hy;     // the title's first word
       const eye = EYE * innerHeight;
       ty = Math.max(-0.3, Math.min(1.25, Math.atan2(dx, eye))) - BASE_YAW;           // + = toward screen right
-      tp = Math.max(-0.22, Math.min(0.26, Math.atan2(dy, Math.hypot(dx, eye))));     // + = chin down; a minifig neck is short
+      tp = Math.max(-0.22, Math.min(0.2, Math.atan2(dy, Math.hypot(dx, eye))));     // + = chin down; a minifig neck is short
     }
     const O = GAZE_OMEGA;
     gaze.vy += (O * O * (ty - gaze.yaw) - 2 * O * gaze.vy) * sec; gaze.yaw += gaze.vy * sec;
@@ -7067,7 +7079,10 @@ async function boot() {
     fig.rotation.x = state.y * 0.06;
     fig.position.y = figRestY + bob;
     if (head) head.rotation.y = headRest + headYaw + state.x * 0.45;
-    if (head) head.rotation.x = headRestX + gaze.pitch * state.stage;
+    if (head) {
+      head.rotation.x = headRestX + gaze.pitch * state.stage;
+      head.position.copy(headRestPos).add(neck).sub(neck.clone().applyEuler(head.rotation));
+    }
     let w = null;
     if (waveT >= 0) { waveT += sec; if (waveT >= WAVE) waveT = -1; else w = wavePose(waveT); }
     const k = w ? w.weight : 0;                       // the idle swing yields to the wave
