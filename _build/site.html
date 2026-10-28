@@ -707,7 +707,7 @@
 <script type="module">
 /* ---------------- 3D minifigure on the tilt card ---------------- */
 const card = document.getElementById('tilt');
-const canvas = document.getElementById('tilt-gl');
+let canvas = document.getElementById('tilt-gl');   // replaced if the WebGL context has to be rebuilt
 const state = window.__tiltState;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -740,8 +740,13 @@ async function boot() {
   const armRest = { R: armR ? armR.rotation.x : 0, L: armL ? armL.rotation.x : 0 };
   const figRestY = fig.position.y;
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setClearColor(0x000000, 0);
+  let renderer = null, w = 0, h = 0;
+  const makeRenderer = () => {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setClearColor(0x000000, 0);
+    w = h = 0;
+  };
+  makeRenderer();
   const scene = new THREE.Scene();
   scene.add(fig);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x40485a, 1.5));
@@ -791,7 +796,6 @@ async function boot() {
   };
   let waveT = -1;                                    // seconds into the wave; -1 = not waving
 
-  let w = 0, h = 0;
   const resize = () => {
     const r = canvas.getBoundingClientRect();
     const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -985,34 +989,73 @@ async function boot() {
     waveT = 0; state.wake();
   };
 
-  /* Only swap the poster out for the canvas once the canvas really shows the
-     figure. A context the browser gives out and then takes away (Safari after
-     a reload, a GPU reset, a background tab) leaves an empty canvas; when that
-     happens fall back to the poster, and swap back once it is restored. */
-  const gl = renderer.getContext();
+  /* Only swap the poster out for the canvas once WebGL demonstrably draws the
+     figure: a test render into a small offscreen target, read back (reading
+     an offscreen target is reliable everywhere; reading the canvas itself is
+     not). A context the browser takes away (Safari after a reload, a GPU
+     reset, a background tab) brings the poster back; if the browser doesn't
+     restore it shortly, build a fresh canvas and renderer and carry on. */
+  const probeRT = new THREE.WebGLRenderTarget(48, 60);
   const painted = () => {
-    // a 1px column down the middle, read right after drawing: any opaque pixel = figure is there
-    const px = new Uint8Array(4 * h);
-    gl.readPixels(w >> 1, 0, 1, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    renderer.setRenderTarget(probeRT); renderer.clear(); renderer.render(scene, cam); renderer.setRenderTarget(null);
+    const px = new Uint8Array(48 * 60 * 4);
+    renderer.readRenderTargetPixels(probeRT, 0, 0, 48, 60, px);
     for (let i = 3; i < px.length; i += 4) if (px[i]) return true;
     return false;
   };
   const show = () => {
-    if (renderer.getContext().isContextLost()) return card.classList.remove('live');
-    resize(); renderer.render(scene, cam);
-    card.classList.toggle('live', painted());
+    if (renderer.getContext().isContextLost()) { card.classList.remove('live'); return; }
+    resize();
+    const ok = painted();
+    renderer.render(scene, cam);
+    card.classList.toggle('live', ok);
+    note(ok ? 'drawn' : 'test render came back empty');
   };
-  canvas.addEventListener('webglcontextlost', () => card.classList.remove('live'));
-  canvas.addEventListener('webglcontextrestored', () => requestAnimationFrame(() => { show(); state.wake(); }));
+  let lostTimer = 0, rebuilds = 0;
+  const rebuild = () => {
+    note('rebuilding renderer');
+    const fresh = canvas.cloneNode(false);
+    canvas.replaceWith(fresh);
+    try { renderer.dispose(); } catch (e) {}
+    canvas = fresh; makeRenderer(); watch(); show(); state.wake();
+  };
+  const watch = () => {
+    canvas.addEventListener('webglcontextlost', () => {
+      card.classList.remove('live'); note('context lost');
+      clearTimeout(lostTimer);
+      lostTimer = setTimeout(() => { if (rebuilds++ < 3) rebuild(); }, 1500);
+    });
+    canvas.addEventListener('webglcontextrestored', () => {
+      clearTimeout(lostTimer); note('context restored');
+      requestAnimationFrame(() => { show(); state.wake(); });
+    });
+  };
+  watch();
   addEventListener('pageshow', e => { if (e.persisted) show(); });   // back/forward cache
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !card.classList.contains('live')) show(); });
 
   fig.rotation.y = BASE_YAW * (matchMedia('(max-width: 899px)').matches ? -1 : 1) * state.stage;
   show();
   if (state.stage >= 1) state.wake();   // deep link: no intro, start the bot straight away
 }
 
+/* ?debug shows what the figure is doing in the corner of the page — for
+   checking on a phone, where there is no console. */
+const debugEl = /[?&]debug\b/.test(location.search) ? document.body.appendChild(Object.assign(document.createElement('pre'), {
+  style: 'position:fixed;left:8px;top:8px;z-index:99;margin:0;padding:8px 10px;max-width:70vw;font:11px/1.4 ui-monospace,monospace;background:rgba(255,255,255,.92);color:#111;border:1px solid #ccc;border-radius:6px;white-space:pre-wrap;pointer-events:none',
+})) : null;
+function note(msg) {
+  if (!debugEl) return;
+  debugEl.textContent += (debugEl.textContent ? '\n' : '') + (performance.now() / 1000).toFixed(1) + 's ' + msg;
+}
+if (debugEl) {
+  note(navigator.userAgent);
+  note('webgl ' + (supported ? (typeof WebGL2RenderingContext !== 'undefined' && probeGL instanceof WebGL2RenderingContext ? '2' : '1') : 'unavailable'));
+  addEventListener('error', e => note('error: ' + e.message));
+}
+
 if (supported) {
-  const go = () => boot().catch(err => console.warn('minifig: staying on the poster', err));
+  const go = () => boot().then(() => note('booted')).catch(err => { note('boot failed: ' + (err && err.message || err)); console.warn('minifig: staying on the poster', err); });
   if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 1200 }); else setTimeout(go, 200);
 }
 </script>
