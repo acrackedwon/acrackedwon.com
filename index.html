@@ -6855,13 +6855,28 @@ async function boot() {
   const armRest = { R: armR ? armR.rotation.x : 0, L: armL ? armL.rotation.x : 0 };
   const figRestY = fig.position.y;
 
-  let renderer = null, w = 0, h = 0;
+  /* Safe mode: no MSAA, low-power GPU. Used after a renderer has lost its
+     context twice, and remembered on this device so the next visit starts
+     there. `dead` = gave up; the static poster stays. */
+  const SAFE_KEY = 'minifig-safe-gl';
+  let safe = false;
+  try { safe = localStorage.getItem(SAFE_KEY) === '1'; } catch (e) {}
+  let renderer = null, w = 0, h = 0, dead = false;
   const makeRenderer = () => {
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer = new THREE.WebGLRenderer(safe
+      ? { canvas, alpha: true, antialias: false, powerPreference: 'low-power' }
+      : { canvas, alpha: true, antialias: true });
     renderer.setClearColor(0x000000, 0);
     w = h = 0;
+    note('renderer' + (safe ? ' (safe mode)' : ''));
   };
   makeRenderer();
+  const lost = () => dead || renderer.getContext().isContextLost();
+  // three throws mid-compile if the context goes away under it; never let that escape the frame loop
+  const draw = () => {
+    if (lost()) return;
+    try { renderer.render(scene, cam); } catch (e) { note('render failed: ' + e.message); }
+  };
   const scene = new THREE.Scene();
   scene.add(fig);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x40485a, 1.5));
@@ -7095,7 +7110,7 @@ async function boot() {
     if (armR) armR.rotation.z = armRestZ + (w ? w.side : 0);
     if (legR) legR.rotation.x = legRest.R + legSwing;
     if (legL) legL.rotation.x = legRest.L - legSwing;
-    renderer.render(scene, cam);
+    draw();
     return waveT >= 0 || bot || !!walk || gazing;
   };
   botMode.addEventListener('change', () => state.wake());
@@ -7107,40 +7122,60 @@ async function boot() {
   /* Only swap the poster out for the canvas once WebGL demonstrably draws the
      figure: a test render into a small offscreen target, read back (reading
      an offscreen target is reliable everywhere; reading the canvas itself is
-     not). A context the browser takes away (Safari after a reload, a GPU
-     reset, a background tab) brings the poster back; if the browser doesn't
-     restore it shortly, build a fresh canvas and renderer and carry on. */
+     not).
+
+     A context the browser takes away (a GPU reset, a background tab) brings
+     the poster back, and a restore brings the figure back. But some setups
+     — Safari 27 on a Mac, seen in the wild — drop and restore the context
+     in a tight loop from the first frame, and redrawing on every restore
+     keeps that loop going until the page hangs. So each renderer gets one
+     loss: a second (or no restore within 1.5s) means a fresh canvas in safe
+     mode; a safe-mode renderer that still can't hold on means giving up on
+     WebGL and keeping the poster. */
   const probeRT = new THREE.WebGLRenderTarget(48, 60);
   const painted = () => {
-    renderer.setRenderTarget(probeRT); renderer.clear(); renderer.render(scene, cam); renderer.setRenderTarget(null);
-    const px = new Uint8Array(48 * 60 * 4);
-    renderer.readRenderTargetPixels(probeRT, 0, 0, 48, 60, px);
-    for (let i = 3; i < px.length; i += 4) if (px[i]) return true;
+    try {
+      renderer.setRenderTarget(probeRT); renderer.clear(); renderer.render(scene, cam); renderer.setRenderTarget(null);
+      const px = new Uint8Array(48 * 60 * 4);
+      renderer.readRenderTargetPixels(probeRT, 0, 0, 48, 60, px);
+      for (let i = 3; i < px.length; i += 4) if (px[i]) return true;
+    } catch (e) { note('test render failed: ' + e.message); }
     return false;
   };
   const show = () => {
-    if (renderer.getContext().isContextLost()) { card.classList.remove('live'); return; }
+    if (lost()) { card.classList.remove('live'); return; }
     resize();
     const ok = painted();
-    renderer.render(scene, cam);
+    draw();
     card.classList.toggle('live', ok);
     note(ok ? 'drawn' : 'test render came back empty');
   };
-  let lostTimer = 0, rebuilds = 0;
+  let lostTimer = 0, lossesHere = 0;
+  const giveUp = () => {
+    dead = true; card.classList.remove('live'); note('giving up on WebGL; poster stays');
+    try { renderer.dispose(); } catch (e) {}
+  };
   const rebuild = () => {
-    note('rebuilding renderer');
+    safe = true;
+    try { localStorage.setItem(SAFE_KEY, '1'); } catch (e) {}
     const fresh = canvas.cloneNode(false);
     canvas.replaceWith(fresh);
     try { renderer.dispose(); } catch (e) {}
     canvas = fresh; makeRenderer(); watch(); show(); state.wake();
   };
+  const next = () => (safe ? giveUp() : rebuild());
   const watch = () => {
-    canvas.addEventListener('webglcontextlost', () => {
-      card.classList.remove('live'); note('context lost');
+    const c = canvas;
+    lossesHere = 0;
+    c.addEventListener('webglcontextlost', () => {
+      if (c !== canvas || dead) return;
+      lossesHere++; card.classList.remove('live'); note('context lost');
       clearTimeout(lostTimer);
-      lostTimer = setTimeout(() => { if (rebuilds++ < 3) rebuild(); }, 1500);
+      // a second loss moves on straight away (a timer would just keep being reset by the loop)
+      if (lossesHere > 1) queueMicrotask(next); else lostTimer = setTimeout(next, 1500);
     });
-    canvas.addEventListener('webglcontextrestored', () => {
+    c.addEventListener('webglcontextrestored', () => {
+      if (c !== canvas || dead || lossesHere > 1) return;   // past its one loss: a rebuild is on the way
       clearTimeout(lostTimer); note('context restored');
       requestAnimationFrame(() => { show(); state.wake(); });
     });
@@ -7161,7 +7196,9 @@ const debugEl = /[?&]debug\b/.test(location.search) ? document.body.appendChild(
 })) : null;
 function note(msg) {
   if (!debugEl) return;
-  debugEl.textContent += (debugEl.textContent ? '\n' : '') + (performance.now() / 1000).toFixed(1) + 's ' + msg;
+  const lines = (debugEl.textContent ? debugEl.textContent.split('\n') : []).slice(-39);
+  lines.push((performance.now() / 1000).toFixed(1) + 's ' + msg);
+  debugEl.textContent = lines.join('\n');
 }
 if (debugEl) {
   note(navigator.userAgent);
