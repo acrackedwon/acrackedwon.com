@@ -72,7 +72,7 @@ def main():
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n"
         "<meta name=\"theme-color\" content=\"#f2f2f0\">\n"
         "<title>Jiwon Shin</title>\n"
-        "<meta name=\"description\" content=\"Jiwon Shin — Seoul. French at Kyung Hee. Learning by making.\">\n"
+        "<meta name=\"description\" content=\"Jiwon Shin — Seoul. French at Kyung Hee. Making small things.\">\n"
         "</head>\n<body>\n" + body + "\n</body>\n</html>\n"
     )
     out = os.path.join(ROOT, "index.html")
