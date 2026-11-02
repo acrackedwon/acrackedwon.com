@@ -35,8 +35,11 @@ def main():
         "LOGO_NEW": a["logo_new"], "LOGO_OLD": a["logo_old"],
         "LYS_CLEAN": a["lys_clean"], "CONF": a["CONF"], "LEX": a["LEX"],
         # 3D minifigure
-        "MINIFIG_POSTER": b64file("minifig_poster.png"),
-        "MINIFIG_GLB": b64file("minifig.glb"),
+        # the two outfits (one is picked at random per visit), each with its static poster
+        "POSTER_HOODIE": b64file("minifig/poster-hoodie.png"),
+        "POSTER_AMG": b64file("minifig/poster-amg.png"),
+        "GLB_HOODIE": b64file("minifig/hoodie.glb"),
+        "GLB_AMG": b64file("minifig/amg.glb"),
         "THREE_JS": read("vendor/three.module.min.js"),
         "BGU_JS": read("vendor/BufferGeometryUtils.js"),
         "GLTF_JS": read("vendor/GLTFLoader.js"),

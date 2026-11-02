@@ -11,10 +11,17 @@ edit the source here and rebuild.
 - `build.py` — fills every placeholder and writes `../index.html`. It fails loudly if the
   template uses a placeholder it has no value for, or if a value goes unused.
 - `assets.json` — posters, logos and screenshots (complete data URIs). Only some are used now.
-- `minifig.glb` — the rigged minifigure (a node per joint), assembled from LDraw.org parts
-  (CC BY 2.0 — credited in the page footer). The wave is animated in `site.html`, not in the GLB.
-- `minifig_poster.png` — static render with the exact live framing; shown until WebGL is up,
-  and kept where WebGL is unavailable.
+- `minifig/` — the rigged minifigure (a node per joint) in two outfits, assembled from
+  LDraw.org parts (CC BY 2.0 — credited in the page footer). Each visit picks one at random;
+  `?outfit=hoodie` or `?outfit=amg` forces one. All motion is procedural, in `site.html`.
+  - `hoodie.glb` — off-white pullover hoodie, black trousers (`hoodie-guy.ldr` in the
+    `acrackedwon/anything` repo, `lego-minifig/`).
+  - `amg.glb` — Mercedes-AMG Petronas 2016 driver race suit, top and bottom
+    (`amg-driver.ldr`: 973pyl + 3815bpy3/3816cpy3/3817cpy3, white, dark grey gloves).
+  - `poster-*.png` — static render of each, with the exact live framing; shown until WebGL is
+    up, and kept where WebGL is unavailable.
+  - `post.py` — turns `minifig2glb.py` output into the site's GLB: lowers the head 4 LDU (no
+    gap at the neck), drops the baked clips, welds vertices.
 - `vendor/` — three.js r170 (`three.module.min.js`, `GLTFLoader.js`, `BufferGeometryUtils.js`;
   MIT, see `three.LICENSE`). Inlined as inert text and loaded as modules through blob URLs.
 - `fonts/` — `inter.woff2` + `pretendard.woff2`, subsets cut from `fonts/src/` by

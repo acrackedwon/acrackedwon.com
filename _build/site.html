@@ -86,6 +86,7 @@
     filter: blur(3px);
   }
   .tilt-poster, .tilt-gl { position: absolute; inset: 0; width: 100%; height: 100%; }
+  html:not(.outfit-amg) .tilt-poster[data-outfit="amg"], html.outfit-amg .tilt-poster[data-outfit="hoodie"] { display: none; }
   .tilt-gl { opacity: 0; transition: opacity .5s ease; }
   .tilt.live .tilt-gl { opacity: 1; }
   .tilt.live .tilt-poster { opacity: 0; transition: opacity .5s ease; }
@@ -237,6 +238,9 @@
   (function () {
     var c = document.documentElement.classList;
     c.add('js');
+    // Two outfits for the minifigure; each visit gets one at random (?outfit=hoodie|amg picks one).
+    var o = (location.search.match(/[?&]outfit=(hoodie|amg)\b/) || [])[1] || (Math.random() < 0.5 ? 'hoodie' : 'amg');
+    window.__outfit = o; c.add('outfit-' + o);
     // Not an Apple device → no SF Pro → Inter, tracked tighter (see --tk).
     if (!/Mac|iPhone|iPad|iPod/.test(navigator.platform || '') && !/Mac OS X|iPhone|iPad/.test(navigator.userAgent)) c.add('inter');
     // Open on the figure alone — unless a link points straight at a section.
@@ -254,7 +258,8 @@
     <button class="tilt" id="tilt" type="button" aria-label="Jiwon Shin — click to say hello">
       <span class="tilt-card" id="tilt-card">
         <span class="tilt-floor" aria-hidden="true"></span>
-        <img class="tilt-poster" src="data:image/png;base64,{{MINIFIG_POSTER}}" alt="" draggable="false">
+        <img class="tilt-poster" data-outfit="hoodie" src="data:image/png;base64,{{POSTER_HOODIE}}" alt="" draggable="false">
+        <img class="tilt-poster" data-outfit="amg" src="data:image/png;base64,{{POSTER_AMG}}" alt="" draggable="false">
         <canvas class="tilt-gl" id="tilt-gl" aria-hidden="true"></canvas>
       </span>
     </button>
@@ -702,7 +707,8 @@
 <script type="text/plain" id="src-three">{{THREE_JS}}</script>
 <script type="text/plain" id="src-bgu">{{BGU_JS}}</script>
 <script type="text/plain" id="src-gltf">{{GLTF_JS}}</script>
-<script type="text/plain" id="src-glb">{{MINIFIG_GLB}}</script>
+<script type="text/plain" id="src-glb-hoodie">{{GLB_HOODIE}}</script>
+<script type="text/plain" id="src-glb-amg">{{GLB_AMG}}</script>
 
 <script type="module">
 /* ---------------- 3D minifigure on the tilt card ---------------- */
@@ -728,7 +734,8 @@ async function boot() {
   const THREE = await import(threeURL);
   const { GLTFLoader } = await import(gltfURL);
 
-  const b64 = txt('src-glb').trim();
+  const b64 = txt('src-glb-' + (window.__outfit || 'hoodie')).trim();
+  note('outfit ' + (window.__outfit || 'hoodie'));
   const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
   const gltf = await new GLTFLoader().parseAsync(bin.buffer, '');
 
@@ -789,7 +796,7 @@ async function boot() {
      Timing matters as much as poses: the lift has to pass through pointing
      straight at the camera, where the hand reads as a big foreshortened claw,
      so both transits are short and the time goes to the swing. */
-  const armRestZ = armR ? armR.rotation.z : 0;
+  const armRestZ = armR ? armR.rotation.z : 0, armRestZL = armL ? armL.rotation.z : 0;
   const D2R = Math.PI / 180, UP = -160 * D2R;
   const SIDE = -1;                            // sign that swings the raised right arm outward, away from the head
   const RAISE = 0.42, SETTLE = 0.16, HOLD = 0.9, LOWER = 0.36;
@@ -893,6 +900,11 @@ async function boot() {
     neck.set(0, Math.min(y0, y1) + 0.12 * Math.abs(y1 - y0), 0);
   }
   const gaze = { yaw: 0, pitch: 0, vy: 0, vp: 0 };   // offsets from the rest pose, on a spring
+  /* The screen-right arm (the figure's left) points where the eyes go: raised
+     to the title's height and swung out toward it, on the same spring. The
+     head's tilt is kept small; the arm takes the real angle. */
+  const aim = { lift: 0, side: 0, vl: 0, vs: 0 };
+  const ARM_OUT = 1;                        // sign of a Z swing that takes the left arm outward
   let looking = null;
   const faceC = new THREE.Vector3();
   if (head) {                               // the face's centre, in the head's own frame
@@ -912,7 +924,7 @@ async function boot() {
     return looking && cur - bd < HOLD_PX ? looking : best;
   };
   const gazeStep = sec => {
-    let ty = 0, tp = 0;
+    let ty = 0, tp = 0, aimL = 0, aimS = 0;
     looking = head && !botMode.matches && !reduced && state.stage > 0 ? pickLook() : null;
     if (looking) {
       const r = looking.getBoundingClientRect(), c = canvas.getBoundingClientRect();
@@ -921,12 +933,18 @@ async function boot() {
       const dx = r.left + 40 - hx, dy = r.top + r.height / 2 - hy;     // the title's first word
       const eye = EYE * innerHeight;
       ty = Math.max(-0.3, Math.min(1.25, Math.atan2(dx, eye))) - BASE_YAW;           // + = toward screen right
-      tp = Math.max(-0.22, Math.min(0.2, Math.atan2(dy, Math.hypot(dx, eye))));     // + = chin down; a minifig neck is short
+      const elev = Math.atan2(dy, Math.hypot(dx, eye));                            // + = below the eyes
+      tp = Math.max(-0.22, Math.min(0.2, elev));                                    // + = chin down; a minifig neck is short
+      aimL = Math.max(-2.2, Math.min(-0.9, -Math.PI / 2 + elev));                    // arm level with the title (−π/2 = straight ahead)
+      aimS = Math.max(0, Math.min(0.9, (ty - gaze.yaw * BODY_SHARE)));               // the rest of the turn, past what the body gives
     }
     const O = GAZE_OMEGA;
     gaze.vy += (O * O * (ty - gaze.yaw) - 2 * O * gaze.vy) * sec; gaze.yaw += gaze.vy * sec;
     gaze.vp += (O * O * (tp - gaze.pitch) - 2 * O * gaze.vp) * sec; gaze.pitch += gaze.vp * sec;
-    return Math.abs(ty - gaze.yaw) + Math.abs(tp - gaze.pitch) + Math.abs(gaze.vy) + Math.abs(gaze.vp) > 1e-3;
+    aim.vl += (O * O * (aimL - aim.lift) - 2 * O * aim.vl) * sec; aim.lift += aim.vl * sec;
+    aim.vs += (O * O * (aimS - aim.side) - 2 * O * aim.vs) * sec; aim.side += aim.vs * sec;
+    return Math.abs(ty - gaze.yaw) + Math.abs(tp - gaze.pitch) + Math.abs(gaze.vy) + Math.abs(gaze.vp) +
+      Math.abs(aimL - aim.lift) + Math.abs(aimS - aim.side) + Math.abs(aim.vl) + Math.abs(aim.vs) > 1e-3;
   };
   addEventListener('scroll', () => { if (!botMode.matches) state.wake(); }, { passive: true });
 
@@ -991,7 +1009,8 @@ async function boot() {
     if (waveT >= 0) { waveT += sec; if (waveT >= WAVE) waveT = -1; else w = wavePose(waveT); }
     const k = w ? w.weight : 0;                       // the idle swing yields to the wave
     if (armR) armR.rotation.x = armRest.R + swing * (1 - k) + (w ? w.arm : 0);
-    if (armL) armL.rotation.x = armRest.L - swing;
+    if (armL) armL.rotation.x = armRest.L - swing + aim.lift * state.stage;
+    if (armL) armL.rotation.z = armRestZL + ARM_OUT * aim.side * state.stage;
     if (armR) armR.rotation.z = armRestZ + (w ? w.side : 0);
     if (legR) legR.rotation.x = legRest.R + legSwing;
     if (legL) legL.rotation.x = legRest.L - legSwing;
