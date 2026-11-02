@@ -9,7 +9,8 @@ shoulders and the adidas mark at the hip, OMP, teal shoulder sweeps; and
 mirrors the teal side panel onto the other leg. Lettering is Inter Bold,
 outlined with fontTools and triangulated with earcut: close to, not the same
 as, the brands' own type. Logos for which a real SVG is at hand (AMG,
-INEOS, HPE, Microsoft, adidas: see LOGOS) are traced from it instead.
+UBS, CrowdStrike, Snapdragon, INEOS, signify, HPE, PETRONAS, Microsoft,
+adidas, and PETRONAS in its current form: see LOGOS) are traced from it instead.
 """
 import sys, math
 from pathlib import Path
@@ -95,17 +96,25 @@ def text(s, cx, base_y, cap, col, skew=0.0, track=0.0):
     tris = fill(allc)
     return [(col, [(cx - w / 2 + px * k + py * k * skew, base_y - py * k) for px, py in t]) for t in tris], w
 
-def svg_logo(name, cx, cy, width, col):
-    """A brand SVG, every filled shape in one colour, centred at (cx, cy) and `width` LDU wide."""
+def svg_logo(name, cx, cy, width, col, keep=lambda fill, box: True, height=None, ids=None):
+    """A brand SVG, every filled shape (that `keep` accepts) in one colour, centred at (cx, cy),
+    `width` LDU wide (or `height` LDU tall)."""
     svg = SVG.parse(str(LOGOS / name))
-    x0, y0, x1, y1 = svg.bbox(); k = width / (x1 - x0)
+    if ids:                                   # shapes kept in <defs> (e.g. a wordmark used as a clip path)
+        els = [SvgPath(svg.get_element_by_id(i)) for i in ids]
+    else:
+        els = [e for e in svg.elements() if isinstance(e, Shape) and e.fill is not None
+               and str(e.fill) != 'none' and keep(str(e.fill).lower(), e.bbox())]
+    boxes = [e.bbox() for e in els]
+    x0, y0 = min(b[0] for b in boxes), min(b[1] for b in boxes)
+    x1, y1 = max(b[2] for b in boxes), max(b[3] for b in boxes)
+    k = height / (y1 - y0) if height else width / (x1 - x0)
     tris = []
-    for e in svg.elements():
-        if not isinstance(e, Shape) or e.fill is None or str(e.fill) == 'none': continue
+    for e in els:
         contours = []
         for sp in SvgPath(e).as_subpaths():
             sp = SvgPath(sp)
-            n = max(12, int(sp.length() / ((x1 - x0) / 180)))
+            n = max(12, int(sp.length() * k / 0.06))                 # a point every ~0.06 LDU
             pts = [tuple(p) for p in sp.npoint(np.linspace(0, 1, n))]
             if len(pts) > 1 and math.dist(pts[0], pts[-1]) < 1e-6: pts = pts[:-1]
             if len(pts) > 2 and abs(area(pts)) > 1e-9: contours.append(pts)
@@ -137,28 +146,45 @@ for n, line in enumerate(src, 1):
     elif n == 2: line = '0 Name: 973pyl-26.dat'
     elif t and t[0] == '1':
         ref = t[-1]
-        if ref == 's\\973pyls01.dat': line = ' '.join(t[:-1] + ['973pyls01-26.dat'])          # BOSS, hidden
+        if ref.startswith('logo-ubs'): line = recol(line, {'0': BASE})                      # redrawn from the real logo
+        elif ref == 's\\973pyls01.dat': line = ' '.join(t[:-1] + ['973pyls01-26.dat'])          # BOSS, hidden
         elif ref == 'logo-petronas.dat': line = recol(line, {'15': BASE})
-        elif ref == 'logo-petronas-inner.dat': line = recol(line, {'2': TEAL})
+        elif ref == 'logo-petronas-inner.dat': line = recol(line, {'2': BASE})            # old emblem: redrawn from the current logo
+        elif ref == 'logo-petronas-text.dat' and float(t[4]) < 0: line = recol(line, {'0': BASE})   # front one only
         else: line = recol(line, {'0': WHITE if ref.startswith('logo-') else DARK})
     elif 57 <= n <= 179 or 697 <= n <= 933: line = recol(line, {'0': BASE})                 # Puma logos, gone
-    elif 934 <= n <= 1070: line = recol(line, {'0': WHITE})                                  # PETRONAS
+    elif 934 <= n <= 1070: line = recol(line, {'0': BASE})                                   # big PETRONAS: redrawn lower, from the real logo
     elif (180 <= n <= 290) or (1071 <= n <= 1274): line = recol(line, {'0': DARK, '71': DARK, '72': DARK})  # collar, zip, seams: quiet
     dst.append(line)
 
 marks = []
-marks += svg_logo('amg.svg', -7.3, 12.95, 3.9, WHITE)
-marks += svg_logo('k-ineos.svg', 8.35, 13.6, 4.4, WHITE)
-marks += svg_logo('h-hpe.svg', 8.35, 15.6, 3.3, WHITE)
-marks += rect(-9.0, 22.15, 9.0, 22.5, TEAL)                                             # line under PETRONAS
-marks += svg_logo('gb-microsoft.svg', 0, 24.6, 11.5, WHITE)
+# right chest: the current PETRONAS emblem (teal, without its white backing) and wordmark
+marks += svg_logo('pw-1.svg', 8.35, 8.2, 0, TEAL, keep=lambda f, b: f == '#00a99d', height=3.0)
+marks += svg_logo('pw-1.svg', 8.35, 10.95, 4.3, WHITE, keep=lambda f, b: b[0] > 78)
+# left chest, under the star: AMG, UBS, CrowdStrike, Snapdragon
+marks += svg_logo('amg.svg', -7.3, 12.75, 3.9, WHITE)
+marks += svg_logo('b-ubs.svg', -7.3, 14.15, 0, WHITE, height=1.25)
+marks += svg_logo('d-crowdstrike.svg', -7.3, 15.65, 5.0, WHITE)
+sd_h = 0.75
+sd_text, sd_w = text('Snapdragon', 0, 0, 0.52, WHITE)
+sd_x = -7.3 - (sd_h + 0.25 + sd_w) / 2                                                 # icon + word, centred together
+marks += svg_logo('snapdragon.svg', sd_x + sd_h / 2, 16.95, 0, WHITE, height=sd_h)
+marks += [(c, [(x + sd_x + sd_h + 0.25 + sd_w / 2, y + 16.95 + 0.26) for x, y in t]) for c, t in sd_text]
+# right chest, under the Petronas mark: INEOS, signify, HPE
+marks += svg_logo('k-ineos.svg', 8.35, 12.75, 4.0, WHITE)
+marks += svg_logo('p-signify.svg', 8.35, 14.2, 3.6, WHITE, ids=['SVGID_1_'])
+marks += svg_logo('h-hpe.svg', 8.35, 15.55, 0, WHITE, height=0.8)
+# centre: PETRONAS, the teal line, Microsoft
+marks += svg_logo('pw-1.svg', 0, 19.5, 18.5, WHITE, keep=lambda f, b: b[0] > 78)        # current PETRONAS wordmark
+marks += rect(-9.0, 21.55, 9.0, 21.88, TEAL)
+marks += svg_logo('gb-microsoft.svg', 0, 23.9, 11.0, WHITE)
 for s in (-1, 1):                                                                     # shoulders: adidas stripes, teal sweep
     for k in range(3):
         y = 0.45 + k * 0.7
         marks += rect(min(s * 7.4, s * 11.6), y, max(s * 7.4, s * 11.6), y + 0.38, WHITE)
     marks += band((s * 5.6, 2.9), (s * 13.2, 4.6), 0.42, TEAL)
-marks += svg_logo('adidas.svg', 8.6, 28.9, 2.4, WHITE)                               # adidas mark, left hip
-marks += text('OMP', -8.6, 29.5, 0.95, WHITE, skew=0.2)[0]
+marks += svg_logo('adidas.svg', 9.4, 30.5, 2.2, WHITE)                               # adidas mark, left hip
+marks += text('OMP', -9.4, 31.0, 0.95, WHITE, skew=0.2)[0]
 dst += ['', '0 // 2026 marks (decals in front of the front face)'] + emit(marks)
 (OUT / '973pyl-26.dat').write_text('\n'.join(dst) + '\n')
 
