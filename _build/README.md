@@ -20,8 +20,9 @@ edit the source here and rebuild.
     driver suit (LDraw has no Mercedes suit newer than 2016). `gen2026.py` writes the
     `*-26.dat` parts from the official 2016 print (973pyl, 3815bpy3, 3816cpy3, 3817cpy3):
     black suit, white logos, teal Petronas accents, old Puma/BOSS marks blanked, plus new
-    marks drawn as flat polygons (lettering in Inter Bold, so close to but not the brands'
-    own type). Rebuild: `gen2026.py <ldraw/parts> . ../fonts/src/InterVariable.woff2`, then
+    marks drawn as flat polygons: AMG, INEOS, HPE, Microsoft and adidas traced from real
+    SVGs (`logos/`, sources in `logos/SOURCES.md`), OMP in Inter Bold. Rebuild:
+    `gen2026.py <ldraw/parts> . ../fonts/src/InterVariable.woff2 logos`, then
     `minifig2glb.py amg-2026.ldr <ldraw lib> raw.glb` and `post.py raw.glb amg.glb`.
   - `poster-*.png` — static render of each, with the exact live framing; shown until WebGL is
     up, and kept where WebGL is unavailable.

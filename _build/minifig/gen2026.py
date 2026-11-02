@@ -8,7 +8,8 @@ as flat polygons a hair in front of the surface: AMG, INEOS, HPE, Microsoft
 shoulders and the adidas mark at the hip, OMP, teal shoulder sweeps; and
 mirrors the teal side panel onto the other leg. Lettering is Inter Bold,
 outlined with fontTools and triangulated with earcut: close to, not the same
-as, the brands' own type.
+as, the brands' own type. Logos for which a real SVG is at hand (AMG,
+INEOS, HPE, Microsoft, adidas: see LOGOS) are traced from it instead.
 """
 import sys, math
 from pathlib import Path
@@ -17,10 +18,12 @@ import mapbox_earcut as earcut
 from fontTools.ttLib import TTFont
 from fontTools.varLib import instancer
 from fontTools.pens.recordingPen import DecomposingRecordingPen
+from svgelements import SVG, Shape, Path as SvgPath
 
 LIB = Path(sys.argv[1])            # ldraw/parts
 OUT = Path(sys.argv[2])
 FONT = sys.argv[3]
+LOGOS = Path(sys.argv[4])          # folder of brand SVGs
 TEAL, DARK, WHITE, BASE, BLACK = '0x200A19B', '0x22A2E33', '15', '16', '0'
 Z = -10.08                         # just in front of the torso's front face (z = -10)
 
@@ -92,6 +95,24 @@ def text(s, cx, base_y, cap, col, skew=0.0, track=0.0):
     tris = fill(allc)
     return [(col, [(cx - w / 2 + px * k + py * k * skew, base_y - py * k) for px, py in t]) for t in tris], w
 
+def svg_logo(name, cx, cy, width, col):
+    """A brand SVG, every filled shape in one colour, centred at (cx, cy) and `width` LDU wide."""
+    svg = SVG.parse(str(LOGOS / name))
+    x0, y0, x1, y1 = svg.bbox(); k = width / (x1 - x0)
+    tris = []
+    for e in svg.elements():
+        if not isinstance(e, Shape) or e.fill is None or str(e.fill) == 'none': continue
+        contours = []
+        for sp in SvgPath(e).as_subpaths():
+            sp = SvgPath(sp)
+            n = max(12, int(sp.length() / ((x1 - x0) / 180)))
+            pts = [tuple(p) for p in sp.npoint(np.linspace(0, 1, n))]
+            if len(pts) > 1 and math.dist(pts[0], pts[-1]) < 1e-6: pts = pts[:-1]
+            if len(pts) > 2 and abs(area(pts)) > 1e-9: contours.append(pts)
+        for t in fill(contours):
+            tris.append((col, [(cx + (px - (x0 + x1) / 2) * k, cy + (py - (y0 + y1) / 2) * k) for px, py in t]))
+    return tris
+
 def rect(x0, y0, x1, y1, col): return [(col, [(x0, y0), (x1, y0), (x1, y1)]), (col, [(x0, y0), (x1, y1), (x0, y1)])]
 def poly4(a, b, c, d, col): return [(col, [a, b, c]), (col, [a, c, d])]
 def band(p, q, w, col):
@@ -119,7 +140,6 @@ for n, line in enumerate(src, 1):
         if ref == 's\\973pyls01.dat': line = ' '.join(t[:-1] + ['973pyls01-26.dat'])          # BOSS, hidden
         elif ref == 'logo-petronas.dat': line = recol(line, {'15': BASE})
         elif ref == 'logo-petronas-inner.dat': line = recol(line, {'2': TEAL})
-        elif ref.startswith('logo-ubs'): line = recol(line, {'0': BASE})   # stitched into the surface: blank it, redraw lower down
         else: line = recol(line, {'0': WHITE if ref.startswith('logo-') else DARK})
     elif 57 <= n <= 179 or 697 <= n <= 933: line = recol(line, {'0': BASE})                 # Puma logos, gone
     elif 934 <= n <= 1070: line = recol(line, {'0': WHITE})                                  # PETRONAS
@@ -127,26 +147,17 @@ for n, line in enumerate(src, 1):
     dst.append(line)
 
 marks = []
-marks += text('AMG', -6.4, 13.6, 0.85, WHITE, skew=0.25)[0]
-marks += rect(-10.3, 13.1, -8.4, 13.33, WHITE) + rect(-10.55, 12.7, -8.65, 12.93, WHITE)  # AMG speed lines
-marks += text('UBS', -6.6, 15.75, 1.0, WHITE, track=0.05)[0]
-marks += text('INEOS', 8.35, 14.3, 1.05, WHITE, track=0.12)[0]
-marks += text('HPE', 8.35, 16.1, 1.05, WHITE)[0]
+marks += svg_logo('amg.svg', -7.3, 12.95, 3.9, WHITE)
+marks += svg_logo('k-ineos.svg', 8.35, 13.6, 4.4, WHITE)
+marks += svg_logo('h-hpe.svg', 8.35, 15.6, 3.3, WHITE)
 marks += rect(-9.0, 22.15, 9.0, 22.5, TEAL)                                             # line under PETRONAS
-mt, mw = text('Microsoft', 0, 25.6, 1.75, WHITE)
-sq, gap = 1.05, 0.18
-gx = -(mw + 2 * sq + gap + 0.9) / 2                                                   # logo + word, centred together
-for i, j in ((0, 0), (1, 0), (0, 1), (1, 1)):
-    marks += rect(gx + i * (sq + gap), 23.45 + j * (sq + gap), gx + i * (sq + gap) + sq, 23.45 + j * (sq + gap) + sq, WHITE)
-marks += [(c, [(x + gx + 2 * sq + gap + 0.9 + mw / 2, y) for x, y in t]) for c, t in mt]
+marks += svg_logo('gb-microsoft.svg', 0, 24.6, 11.5, WHITE)
 for s in (-1, 1):                                                                     # shoulders: adidas stripes, teal sweep
     for k in range(3):
         y = 0.45 + k * 0.7
         marks += rect(min(s * 7.4, s * 11.6), y, max(s * 7.4, s * 11.6), y + 0.38, WHITE)
     marks += band((s * 5.6, 2.9), (s * 13.2, 4.6), 0.42, TEAL)
-for k in range(3):                                                                    # adidas mark, left hip
-    x0 = 7.6 + k * 0.62; h = 0.8 + k * 0.45
-    marks += poly4((x0, 29.6), (x0 + 0.45, 29.6), (x0 + 0.45 + h * 0.55, 29.6 - h), (x0 + h * 0.55, 29.6 - h), WHITE)
+marks += svg_logo('adidas.svg', 8.6, 28.9, 2.4, WHITE)                               # adidas mark, left hip
 marks += text('OMP', -8.6, 29.5, 0.95, WHITE, skew=0.2)[0]
 dst += ['', '0 // 2026 marks (decals in front of the front face)'] + emit(marks)
 (OUT / '973pyl-26.dat').write_text('\n'.join(dst) + '\n')
