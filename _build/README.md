@@ -23,7 +23,10 @@ edit the source here and rebuild.
     marks drawn as flat polygons, traced from the brands' SVGs (`logos/`, sources in
     `logos/SOURCES.md`): PETRONAS (current logo), AMG, UBS, CrowdStrike, Snapdragon, INEOS,
     signify, HPE, Microsoft, adidas; OMP in Inter Bold. Rebuild:
-    `gen2026.py <ldraw/parts> . ../fonts/src/InterVariable.woff2 logos`, then
+    Sleeves (`3818-26.dat`, `3819-26.dat`): the arm surface with a darker lower sleeve and
+    the sleeve sponsors projected onto the curved arm. Rebuild (~10 min, the projection is
+    brute force): `gen2026.py <ldraw/parts> . ../fonts/src/InterVariable.woff2 logos
+    <anything repo>/lego-minifig`, then
     `minifig2glb.py amg-2026.ldr <ldraw lib> raw.glb` and `post.py raw.glb amg.glb`.
   - `poster-*.png` — static render of each, with the exact live framing; shown until WebGL is
     up, and kept where WebGL is unavailable.

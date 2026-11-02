@@ -211,3 +211,95 @@ for l in lines('3816cpy3.dat'):
         mirror.append(f'{n} {TEAL} ' + ' '.join(f'{v:.4f}' for v in p[::-1].reshape(-1)))
 (OUT / '3817cpy3-26.dat').write_text('\n'.join(legl + ['0 // teal side panel, mirrored'] + mirror) + '\n')
 print('ok', len(marks), 'decal triangles,', len(mirror), 'mirrored')
+
+# ---------------- sleeves ----------------
+# The arms are round, so the sleeve marks are laid out flat and then projected
+# onto the arm along a viewing direction from the front-outer side: every
+# decal vertex is ray-cast onto the arm's own triangles and lifted a hair off
+# the surface. Long triangles are split first so they follow the curve.
+sys.path.insert(0, sys.argv[5])          # acrackedwon/anything: lego-minifig/ (ldraw2glb.walk flattens the arm)
+import ldraw2glb as L
+
+class _Lib:
+    def get(self, name):
+        key = name.replace('\\', '/').lower()
+        for d in ('', 's/', '../p/', '../p/48/'):
+            p = LIB / (d + key)
+            if p.is_file(): return p.read_text(errors='replace').replace('\r', '').splitlines()
+        p = LIB.parent / 'p' / key
+        if p.is_file(): return p.read_text(errors='replace').replace('\r', '').splitlines()
+        raise FileNotFoundError(name)
+
+def arm_tris(part):
+    g = {}; L.walk(lines(part), _Lib(), np.eye(4), 16, False, g)
+    return {c: np.array(v) for c, v in g.items()}
+
+def raycast(orig, d, tris):
+    """First hit of rays orig + t*d (t > 0) on triangles; NaN where nothing is hit."""
+    v0, e1, e2 = tris[:, 0], tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0]
+    p = np.cross(d, e2); det = (e1 * p).sum(1); ok = np.abs(det) > 1e-9
+    v0, e1, e2, p, det = v0[ok], e1[ok], e2[ok], p[ok], det[ok]
+    out = np.full_like(orig, np.nan)
+    for i in range(0, len(orig), 2048):
+        o = orig[i:i + 2048][:, None, :]
+        s = o - v0[None]; u = (s * p[None]).sum(2) / det
+        q = np.cross(s, e1[None]); v = (q * d).sum(2) / det; t = (q * e2[None]).sum(2) / det
+        t = np.where((u >= 0) & (v >= 0) & (u + v <= 1) & (t > 0), t, np.inf)
+        tm = t.min(1); hit = np.isfinite(tm)
+        out[i:i + 2048][hit] = orig[i:i + 2048][hit] + tm[hit, None] * d
+    return out
+
+def split(t, maxlen=0.45):
+    a, b, c = (np.array(p) for p in t)
+    l = [np.linalg.norm(b - a), np.linalg.norm(c - b), np.linalg.norm(a - c)]
+    if max(l) <= maxlen: return [t]
+    k = int(np.argmax(l)); pts = [a, b, c]; m = (pts[k] + pts[(k + 1) % 3]) / 2
+    return split((tuple(pts[k]), tuple(m), tuple(pts[(k + 2) % 3])), maxlen) + split((tuple(m), tuple(pts[(k + 1) % 3]), tuple(pts[(k + 2) % 3])), maxlen)
+
+def sleeve(part, out_name, side, stack, lower_from=11.0, lower_col='0x23A3D42'):
+    """side = -1 for the arm on the figure's right (screen left), +1 for the other."""
+    geo = arm_tris(part)
+    every = np.concatenate(list(geo.values()))
+    d = np.array([-side * 0.72, 0.0, 0.69]); d /= np.linalg.norm(d)        # looking at the front-outer side
+    up = np.array([0.0, -1.0, 0.0]); right = np.cross(d, up)
+    verts = every.reshape(-1, 3)
+    body = ['0 ' + out_name.replace('.dat', ''), f'0 Name: {out_name}', '0 // arm surface (flattened from the official part), lower sleeve darker']
+    for c, T in geo.items():
+        for t in T:
+            col = lower_col if (c == 16 and t[:, 1].mean() > lower_from) else c
+            body.append('3 %s ' % col + ' '.join(f'{x:.3f}' for x in t.reshape(-1)))
+    decal = []
+    for name, v, size, col, kw in stack:
+        near = verts[np.abs(verts[:, 1] - v) < 1.0]
+        uc = (near @ right).min() / 2 + (near @ right).max() / 2 if len(near) else 0.0
+        for c, t in svg_logo(name, 0, 0, size, col, **kw):
+            for s in split(t):
+                decal.append((c, s, v, uc))
+    pts = np.array([[uc + x, v + y] for c, s, v, uc in decal for x, y in s])
+    origin = pts[:, :1] * right + (pts[:, 1:2]) * -up - d * 40
+    origin = origin + np.array([0, 0, 0])
+    hits = raycast(origin, d, every) - d * 0.08
+    hits = hits.reshape(-1, 3, 3)
+    n = 0
+    for (c, s, v, uc), h in zip(decal, hits):
+        if np.isnan(h).any(): continue
+        body.append(f'3 {c} ' + ' '.join(f'{x:.3f}' for x in h.reshape(-1))); n += 1
+    (OUT / out_name).write_text('\n'.join(body) + '\n')
+    return n
+
+PET = dict(keep=lambda f, b: f == '#00a99d', height=1.15)
+PETW = dict(keep=lambda f, b: b[0] > 78)
+R = sleeve('3818.dat', '3818-26.dat', -1, [
+    ('pw-1.svg', -1.6, 0, TEAL, PET), ('pw-1.svg', -0.45, 2.6, WHITE, PETW),
+    ('si2-sap.svg', 0.9, 1.7, WHITE, {}), ('si2-shell.svg', 2.6, 1.4, WHITE, {}),
+    ('sl-akkodis2.svg', 4.2, 3.0, WHITE, {}),
+    ('sl-pirelli.svg', 5.6, 3.0, WHITE, dict(keep=lambda f, b: f == '#cc2229')),        # the lettering, not the yellow box
+])
+Lf = sleeve('3819.dat', '3819-26.dat', 1, [
+    ('pw-1.svg', -1.6, 0, TEAL, PET), ('pw-1.svg', -0.45, 2.6, WHITE, PETW),
+    ('sl-solera.svg', 1.0, 2.4, WHITE, dict(keep=lambda f, b: f == '#2b55a2' and b[2] - b[0] > 1000)),   # the word
+    ('sl-iwc.svg', 2.6, 2.0, WHITE, dict(keep=lambda f, b: b[3] < 30)),                 # IWC, without SCHAFFHAUSEN
+    ('si2-amd.svg', 4.0, 2.6, WHITE, {}),
+    ('sl-bonvoy.svg', 5.5, 3.0, WHITE, dict(keep=lambda f, b: f != '#ff9662' and b[0] < 286)),
+])
+print('sleeves', R, Lf, 'decal triangles')
