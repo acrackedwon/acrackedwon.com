@@ -16,10 +16,13 @@ edit the source here and rebuild.
   `?outfit=hoodie` or `?outfit=amg` forces one. All motion is procedural, in `site.html`.
   - `hoodie.glb` — off-white pullover hoodie, black trousers (`hoodie-guy.ldr` in the
     `acrackedwon/anything` repo, `lego-minifig/`).
-  - `amg.glb` — Mercedes-AMG Petronas driver race suit, top and bottom, in black with white
-    print, close to the 2025 LEGO suit (which LDraw doesn't have yet). Built from the 2016
-    print (973pyl + 3815bpy3/3816cpy3/3817cpy3) with its black print turned white: the
-    `*-blk.dat` files next to `amg-driver.ldr` are those recoloured copies.
+  - `amg.glb` — Mercedes-AMG Petronas race suit, top and bottom, made up after the 2026
+    driver suit (LDraw has no Mercedes suit newer than 2016). `gen2026.py` writes the
+    `*-26.dat` parts from the official 2016 print (973pyl, 3815bpy3, 3816cpy3, 3817cpy3):
+    black suit, white logos, teal Petronas accents, old Puma/BOSS marks blanked, plus new
+    marks drawn as flat polygons (lettering in Inter Bold, so close to but not the brands'
+    own type). Rebuild: `gen2026.py <ldraw/parts> . ../fonts/src/InterVariable.woff2`, then
+    `minifig2glb.py amg-2026.ldr <ldraw lib> raw.glb` and `post.py raw.glb amg.glb`.
   - `poster-*.png` — static render of each, with the exact live framing; shown until WebGL is
     up, and kept where WebGL is unavailable.
   - `post.py` — turns `minifig2glb.py` output into the site's GLB: lowers the head 4 LDU (no
