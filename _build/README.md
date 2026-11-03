@@ -1,8 +1,9 @@
 # _build — source pipeline for index.html
 
 `../index.html` is a **generated, self-contained** file (images, fonts, three.js and the
-3D model are all inlined, so it deploys with no other assets). Don't hand-edit it —
-edit the source here and rebuild.
+3D model are all inlined). The only other deployed files are `../f1/amg.glb` and
+`../f1/car.glb`, copied there by `build.py` and fetched only when the easter egg plays.
+Don't hand-edit either — edit the source here and rebuild.
 
 ## Files
 - `site.html` — the real editable source (HTML/CSS/JS with `{{PLACEHOLDER}}` tokens).
@@ -12,8 +13,17 @@ edit the source here and rebuild.
   template uses a placeholder it has no value for, or if a value goes unused.
 - `assets.json` — posters, logos and screenshots (complete data URIs). Only some are used now.
 - `minifig/` — the rigged minifigure (a node per joint) in two outfits, assembled from
-  LDraw.org parts (CC BY 2.0 — credited in the page footer). Each visit picks one at random;
-  `?outfit=hoodie` or `?outfit=amg` forces one. All motion is procedural, in `site.html`.
+  LDraw.org parts (CC BY 2.0 — credited in the page footer). The page shows the hoodie;
+  the race suit only appears in the easter egg. All motion is procedural, in `site.html`.
+- Easter egg ("lights out"): five quick taps on the figure (tap 1 still waves/walks; taps
+  2–5 light the start lights over the card), or typing `boxbox`. After a random hold the
+  lights go out: the figure spins into the race suit (teal ring + sparks), the car
+  (`car/`) pulls up, the figure hops into the cockpit and the car launches out of frame;
+  then the hoodie figure drops back in. While it runs the canvas grows past the card
+  (masked to fade at its edges) and the camera's FOV grows with it, so nothing jumps.
+  `?debug` exposes `window.__f1` (`load`, `start`, `seek(t)`, `paused`) for stepping it.
+- `car/` — the race car (see `car/README.md`): Mecabricks model by jwf1, driver removed,
+  W14 livery, meshopt-compressed (`vendor/meshopt_decoder.module.js` is inlined for it).
   - `hoodie.glb` — off-white pullover hoodie, black trousers (`hoodie-guy.ldr` in the
     `acrackedwon/anything` repo, `lego-minifig/`).
   - `amg.glb` — Mercedes-AMG Petronas race suit, top and bottom, made up after the 2026
@@ -28,8 +38,8 @@ edit the source here and rebuild.
     brute force): `gen2026.py <ldraw/parts> . ../fonts/src/InterVariable.woff2 logos
     <anything repo>/lego-minifig`, then
     `minifig2glb.py amg-2026.ldr <ldraw lib> raw.glb` and `post.py raw.glb amg.glb`.
-  - `poster-*.png` — static render of each, with the exact live framing; shown until WebGL is
-    up, and kept where WebGL is unavailable.
+  - `poster-hoodie.png` — static render with the exact live framing; shown until WebGL is
+    up, and kept where WebGL is unavailable. (`poster-amg.png` is no longer used.)
   - `post.py` — turns `minifig2glb.py` output into the site's GLB: lowers the head 4 LDU (no
     gap at the neck), drops the baked clips, welds vertices.
 - `vendor/` — three.js r170 (`three.module.min.js`, `GLTFLoader.js`, `BufferGeometryUtils.js`;

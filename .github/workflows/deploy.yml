@@ -28,12 +28,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 배포에 필요한 파일만 _site/에 모은다 (index.html은 이미 모든 이미지·폰트를 인라인한
-      # 자체 완결형이라 다른 파일이 필요 없음). CNAME은 커스텀 도메인 유지용.
+      # 배포에 필요한 파일만 _site/에 모은다 (index.html은 이미지·폰트를 인라인한 자체 완결형;
+      # f1/은 이스터에그가 실행될 때만 불러오는 레이싱 슈트·레이싱카 GLB). CNAME은 커스텀 도메인 유지용.
       - name: Assemble site
         run: |
           mkdir -p _site
           cp index.html _site/
+          cp -r f1 _site/
           [ -f CNAME ] && cp CNAME _site/ || true
 
       - name: Setup Pages

@@ -86,8 +86,24 @@
     filter: blur(3px);
   }
   .tilt-poster, .tilt-gl { position: absolute; inset: 0; width: 100%; height: 100%; }
-  html:not(.outfit-amg) .tilt-poster[data-outfit="amg"], html.outfit-amg .tilt-poster[data-outfit="hoodie"] { display: none; }
   .tilt-gl { opacity: 0; transition: opacity .5s ease; }
+  .tilt-floor { transition: opacity .3s ease; }
+  .tilt.f1 .tilt-floor { opacity: 0; }
+  /* easter egg: the canvas grows past the card so the car has room, and fades out toward its edges */
+  .tilt.f1 .tilt-gl {
+    -webkit-mask-image: radial-gradient(closest-side, #000 72%, transparent);
+            mask-image: radial-gradient(closest-side, #000 72%, transparent);
+  }
+  .hero-card { position: relative; }
+  .f1-lights {
+    position: absolute; left: 50%; top: -6px; z-index: 2; display: flex; gap: 7px; padding: 6px 9px;
+    transform: translate(-50%, -100%) translateY(6px); border-radius: 999px; background: #111;
+    opacity: 0; transition: opacity .25s ease, transform .35s var(--ease-out); pointer-events: none;
+  }
+  .f1-lights.on { opacity: 1; transform: translate(-50%, -100%); }
+  .f1-lights i { width: 11px; height: 11px; border-radius: 50%; background: #2a2a2a; transition: background .06s, box-shadow .06s; }
+  .f1-lights i.lit { background: #ff1801; box-shadow: 0 0 8px 1px rgba(255, 24, 1, .75); }
+  @media (max-width: 899px) { .f1-lights { gap: 4px; padding: 4px 6px; } .f1-lights i { width: 7px; height: 7px; } }
   .tilt.live .tilt-gl { opacity: 1; }
   .tilt.live .tilt-poster { opacity: 0; transition: opacity .5s ease; }
 
@@ -238,9 +254,6 @@
   (function () {
     var c = document.documentElement.classList;
     c.add('js');
-    // Two outfits for the minifigure; each visit gets one at random (?outfit=hoodie|amg picks one).
-    var o = (location.search.match(/[?&]outfit=(hoodie|amg)\b/) || [])[1] || (Math.random() < 0.5 ? 'hoodie' : 'amg');
-    window.__outfit = o; c.add('outfit-' + o);
     // Not an Apple device → no SF Pro → Inter, tracked tighter (see --tk).
     if (!/Mac|iPhone|iPad|iPod/.test(navigator.platform || '') && !/Mac OS X|iPhone|iPad/.test(navigator.userAgent)) c.add('inter');
     // Open on the figure alone — unless a link points straight at a section.
@@ -258,11 +271,11 @@
     <button class="tilt" id="tilt" type="button" aria-label="Jiwon Shin — click to say hello">
       <span class="tilt-card" id="tilt-card">
         <span class="tilt-floor" aria-hidden="true"></span>
-        <img class="tilt-poster" data-outfit="hoodie" src="data:image/png;base64,{{POSTER_HOODIE}}" alt="" draggable="false">
-        <img class="tilt-poster" data-outfit="amg" src="data:image/png;base64,{{POSTER_AMG}}" alt="" draggable="false">
+        <img class="tilt-poster" src="data:image/png;base64,{{POSTER_HOODIE}}" alt="" draggable="false">
         <canvas class="tilt-gl" id="tilt-gl" aria-hidden="true"></canvas>
       </span>
     </button>
+    <div class="f1-lights" id="f1-lights" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
   </div>
 </aside>
 
@@ -481,7 +494,7 @@
 
   <footer>
     <p>© 2026 Jiwon Shin</p>
-    <p>Minifigure: <a href="https://www.ldraw.org" target="_blank" rel="noopener">LDraw.org</a> parts (CC BY 2.0), three.js. LEGO® is a trademark of the LEGO Group, which does not sponsor or endorse this site.</p>
+    <p>Minifigure: <a href="https://www.ldraw.org" target="_blank" rel="noopener">LDraw.org</a> parts (CC BY 2.0), three.js. Race car: <a href="https://www.mecabricks.com/en/models/MgaXpqnzaz0" target="_blank" rel="noopener">model by jwf1</a> on Mecabricks. LEGO® is a trademark of the LEGO Group, which does not sponsor or endorse this site.</p>
   </footer>
 </main>
 </div>
@@ -693,6 +706,7 @@
   // mobile bot sends it walking to the other corner; on PC it just waves.
   frame.addEventListener('click', () => {
     const entered = window.__enter ? window.__enter() : false;
+    if (!entered && state.tap && state.tap()) return;          // quick taps light the start lights (easter egg)
     if (!entered && state.walk && state.walk()) return;
     if (state.wave) state.wave();
   });
@@ -708,7 +722,7 @@
 <script type="text/plain" id="src-bgu">{{BGU_JS}}</script>
 <script type="text/plain" id="src-gltf">{{GLTF_JS}}</script>
 <script type="text/plain" id="src-glb-hoodie">{{GLB_HOODIE}}</script>
-<script type="text/plain" id="src-glb-amg">{{GLB_AMG}}</script>
+<script type="text/plain" id="src-meshopt">{{MESHOPT_JS}}</script>
 
 <script type="module">
 /* ---------------- 3D minifigure on the tilt card ---------------- */
@@ -734,16 +748,16 @@ async function boot() {
   const THREE = await import(threeURL);
   const { GLTFLoader } = await import(gltfURL);
 
-  const b64 = txt('src-glb-' + (window.__outfit || 'hoodie')).trim();
-  note('outfit ' + (window.__outfit || 'hoodie'));
+  const b64 = txt('src-glb-hoodie').trim();
   const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
   const gltf = await new GLTFLoader().parseAsync(bin.buffer, '');
 
-  const fig = gltf.scene;
+  let fig = gltf.scene;                 // the figure being driven (swapped for the race suit in the easter egg)
+  const figHoodie = fig;
   fig.scale.setScalar(25);
-  const head = fig.getObjectByName('Head');
+  let head = fig.getObjectByName('Head');
   const headRest = head ? head.rotation.y : 0, headRestX = head ? head.rotation.x : 0;
-  const armR = fig.getObjectByName('Arm_R'), armL = fig.getObjectByName('Arm_L');
+  let armR = fig.getObjectByName('Arm_R'), armL = fig.getObjectByName('Arm_L');
   const armRest = { R: armR ? armR.rotation.x : 0, L: armL ? armL.rotation.x : 0 };
   const figRestY = fig.position.y;
 
@@ -843,7 +857,7 @@ async function boot() {
      figure walks in place inside it, so the step cycle and the slide are driven
      from the same clock. Taps while walking are ignored. */
   const stageEl = document.querySelector('.stage');
-  const legR = fig.getObjectByName('Leg_R'), legL = fig.getObjectByName('Leg_L');
+  let legR = fig.getObjectByName('Leg_R'), legL = fig.getObjectByName('Leg_L');
   const legRest = { R: legR ? legR.rotation.x : 0, L: legL ? legL.rotation.x : 0 };
   const TURN = 0.46, STEP_HZ = 1.9, SPEED = 120;      // s, strides/s, px/s
   let atLeft = false, posX = 0, walk = null, stepPh = 0;
@@ -1014,14 +1028,236 @@ async function boot() {
     if (armR) armR.rotation.z = armRestZ + (w ? w.side : 0);
     if (legR) legR.rotation.x = legRest.R + legSwing;
     if (legL) legL.rotation.x = legRest.L - legSwing;
+    if (f1) f1Frame(sec);
     draw();
-    return waveT >= 0 || bot || !!walk || gazing;
+    return waveT >= 0 || bot || !!walk || gazing || !!f1;
   };
   botMode.addEventListener('change', () => state.wake());
   state.wave = () => {
     if (reduced || waveT >= 0) return;
     waveT = 0; state.wake();
   };
+
+  /* ---------------- easter egg: lights out ----------------
+     Five quick taps on the figure light the five start lights over the card
+     (or type "boxbox" and they come on by themselves). After a random hold
+     they go out, like a race start: the figure spins into the race suit in a
+     burst of teal, the car pulls up beside it, it hops into the cockpit and
+     the car launches off, out of the frame. Then the hoodie figure drops back
+     in. The suit and the car (f1/*.glb) are only fetched once the lights start.
+
+     For the run, the canvas grows past the card (and fades out toward its
+     edges) so the car has room; the camera's field of view grows with it, so
+     the figure doesn't move on screen when that happens. */
+  const lightsEl = document.getElementById('f1-lights');
+  const lamps = lightsEl ? [...lightsEl.children] : [];
+  const setLights = n => {
+    if (!lightsEl) return;
+    lightsEl.classList.toggle('on', n > 0);
+    lamps.forEach((l, i) => l.classList.toggle('lit', i < n));
+  };
+  let f1 = null, f1Busy = false, f1Assets = null;
+  const loadF1 = () => f1Assets || (f1Assets = (async () => {
+    const { MeshoptDecoder } = await import(blob(txt('src-meshopt')));
+    const ld = new GLTFLoader(); ld.setMeshoptDecoder(MeshoptDecoder);
+    const [suit, car] = await Promise.all([ld.loadAsync('f1/amg.glb'), ld.loadAsync('f1/car.glb')]);
+    const figSuit = suit.scene; figSuit.scale.setScalar(25); figSuit.visible = false; scene.add(figSuit);
+    const carObj = new THREE.Group(); carObj.add(car.scene); car.scene.scale.setScalar(25);
+    carObj.visible = false; scene.add(carObj);
+    car.scene.traverse(o => { if (o.isMesh && o.material && o.material.name === 'decals') Object.assign(o.material, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); });
+    const cb = new THREE.Box3().setFromObject(car.scene);
+    note('f1 assets loaded');
+    return { figSuit, carObj, carBody: car.scene, carFloor: cb.min.y };
+  })().catch(e => { note('f1 load failed: ' + e.message); f1Assets = null; throw e; }));
+
+  const useFig = f => {
+    fig.visible = false; fig = f; fig.visible = true;
+    head = fig.getObjectByName('Head'); armR = fig.getObjectByName('Arm_R'); armL = fig.getObjectByName('Arm_L');
+    legR = fig.getObjectByName('Leg_R'); legL = fig.getObjectByName('Leg_L');
+    if (head) head.rotation.order = 'YXZ';
+  };
+
+  // the pop when the suit goes on: a teal ring on the floor and a spray of sparks
+  const floorY = box.min.y;
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.86, 1, 64), new THREE.MeshBasicMaterial({ color: 0x00a19b, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = floorY + 0.01; ring.visible = false; scene.add(ring);
+  const SPARKS = 90, sp = new Float32Array(SPARKS * 3), sv = [], sc = new Float32Array(SPARKS * 3);
+  const sparkTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'); const g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, '#fff'); g.addColorStop(0.45, 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(c); })();
+  const sparkGeo = new THREE.BufferGeometry();
+  sparkGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3)); sparkGeo.setAttribute('color', new THREE.BufferAttribute(sc, 3));
+  const sparks = new THREE.Points(sparkGeo, new THREE.PointsMaterial({ size: 0.075, map: sparkTex, vertexColors: true, transparent: true, depthWrite: false }));
+  sparks.visible = false; sparks.frustumCulled = false; scene.add(sparks);
+  const palette = [[0, 0.63, 0.61], [0.75, 1, 0.97], [1, 1, 1], [0.72, 0.75, 0.78]];
+  const burst = at => {
+    for (let i = 0; i < SPARKS; i++) {
+      const a = Math.random() * Math.PI * 2, up = 0.4 + Math.random() * 1.6, v = 1.4 + Math.random() * 2.2;
+      sv[i] = [Math.cos(a) * v, up * 1.6, Math.sin(a) * v];
+      sp.set([at.x, at.y + (Math.random() - 0.3) * 0.5, at.z], i * 3);
+      sc.set(palette[i % palette.length], i * 3);
+    }
+    sparkGeo.attributes.position.needsUpdate = sparkGeo.attributes.color.needsUpdate = true;
+  };
+
+  const camPos0 = cam.position.clone(), camTgt0 = new THREE.Vector3(ctr.x, ctr.y - size.y * 0.02, ctr.z);
+  const FOV0 = cam.fov, ASPECT0 = cam.aspect;
+  const lerp = (a, b, u) => a + (b - a) * u, clamp01 = u => Math.min(1, Math.max(0, u));
+  const ph = (t, a, b) => clamp01((t - a) / (b - a));
+  const outCubic = u => 1 - Math.pow(1 - u, 3);
+  const bounce = u => { const n = 7.5625, d = 2.75; if (u < 1 / d) return n * u * u; if (u < 2 / d) return n * (u -= 1.5 / d) * u + 0.75; if (u < 2.5 / d) return n * (u -= 2.25 / d) * u + 0.9375; return n * (u -= 2.625 / d) * u + 0.984375; };
+  // the car stops nose-out toward the viewer's left, its cockpit beside the figure
+  const CAR_YAW = 2.67, FWD = new THREE.Vector3(-Math.sin(CAR_YAW), 0, -Math.cos(CAR_YAW));
+  const SEAT = new THREE.Vector3(0, 0.0224, -0.004).multiplyScalar(25);   // the original driver's torso top, in the car's frame
+  const SEAT_AT = new THREE.Vector3(-1.5, 0, -1.25);                      // where the cockpit ends up, beside the figure
+  const T = { swap: 0.45, spin: 0.9, camOut: [0.6, 1.6], carIn: [1.0, 2.4], face: [1.9, 2.4], hop: [2.45, 3.05],
+              rev: [3.1, 3.5], go: [3.5, 4.3], back: [4.5, 5.4], drop: [4.85, 5.5], end: 5.55 };
+  const camT1 = new THREE.Vector3(), camP1 = new THREE.Vector3(), tmp = new THREE.Vector3(), q0 = new THREE.Quaternion();
+
+  const expand = on => {
+    card.classList.toggle('f1', on);
+    if (!on) { canvas.style.left = canvas.style.top = canvas.style.width = canvas.style.height = ''; cam.fov = FOV0; cam.aspect = ASPECT0; cam.updateProjectionMatrix(); return; }
+    const W = card.offsetWidth, H = card.offsetHeight, mob = botMode.matches;
+    const ex = mob ? 1.5 : 0.62, ey = mob ? 1.1 : 0.42;
+    Object.assign(canvas.style, { left: -ex * W + 'px', top: -ey * H + 'px', width: W * (1 + 2 * ex) + 'px', height: H * (1 + 2 * ey) + 'px' });
+    cam.fov = 2 * Math.atan(Math.tan(FOV0 * Math.PI / 360) * (1 + 2 * ey)) * 180 / Math.PI;
+    cam.aspect = ASPECT0 * (1 + 2 * ex) / (1 + 2 * ey); cam.updateProjectionMatrix();
+  };
+
+  const startF1 = async () => {
+    let A;
+    try { A = await loadF1(); } catch (e) { f1Busy = false; setLights(0); return; }
+    while (walk) await new Promise(r => setTimeout(r, 100));
+    setLights(5);
+    await new Promise(r => setTimeout(r, 400 + Math.random() * 1400));   // the hold before lights out
+    setLights(0);
+    expand(true);
+    const stand = new THREE.Vector3(fig.position.x, figRestY, fig.position.z);
+    const carStop = SEAT_AT.clone().sub(SEAT.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), CAR_YAW).setY(0));
+    carStop.y = floorY - A.carFloor;
+    camT1.set(-0.85, floorY + 0.45, -0.9);
+    camP1.copy(camT1).add(tmp.set(0.3, 0.55, 1).normalize().multiplyScalar(camPos0.distanceTo(camTgt0) * 3.1));
+    f1 = { t: 0, A, stand, carStop, swapped: false, seated: false, gone: false, back: false, yaw0: fig.rotation.y };
+    state.wake();
+  };
+
+  const f1Frame = sec => {
+    const S = f1, A = S.A; S.t += window.__f1 && window.__f1.paused ? 0 : Math.min(sec, 1 / 20);
+    const t = S.t, car = A.carObj;
+    // camera: out to take in the car, then home
+    const out = (t < T.back[0] ? inOut(ph(t, ...T.camOut)) : 1 - inOut(ph(t, ...T.back)));
+    cam.position.lerpVectors(camPos0, camP1, out);
+    cam.lookAt(tmp.lerpVectors(camTgt0, camT1, out));
+
+    // 1. spin into the suit
+    if (t < T.spin) {
+      const u = t / T.spin;
+      fig.rotation.y += Math.PI * 4 * inOut(u);
+      fig.position.y = figRestY + 0.42 * Math.sin(Math.PI * u);
+      if (armR) armR.rotation.x = armRest.R - 2.6 * Math.sin(Math.PI * u);
+      if (armL) armL.rotation.x = armRest.L - 2.6 * Math.sin(Math.PI * u);
+    }
+    if (!S.swapped && t >= T.swap) {
+      S.swapped = true;
+      const keep = { p: fig.position.clone(), r: fig.rotation.clone() };
+      useFig(A.figSuit); fig.position.copy(keep.p); fig.rotation.copy(keep.r);
+      burst(tmp.set(S.stand.x, floorY + 0.55, S.stand.z)); sparks.visible = ring.visible = true; S.tb = t;
+      ring.position.x = S.stand.x; ring.position.z = S.stand.z;
+    }
+    if (S.tb !== undefined) {   // sparks fly and fall; the ring spreads and fades
+      const k = t - S.tb;
+      for (let i = 0; i < SPARKS; i++) { const v = sv[i]; v[1] -= 6 * sec; sp[i * 3] += v[0] * sec; sp[i * 3 + 1] += v[1] * sec; sp[i * 3 + 2] += v[2] * sec; }
+      sparkGeo.attributes.position.needsUpdate = true;
+      sparks.material.opacity = clamp01(1 - k / 0.9);
+      ring.scale.setScalar(0.3 + 1.5 * outCubic(clamp01(k / 0.7))); ring.material.opacity = 0.85 * clamp01(1 - k / 0.7);
+      if (k > 1) { sparks.visible = ring.visible = false; S.tb = undefined; }
+    }
+    if (t >= T.spin && !S.seated && !S.gone) {   // standing by: face the viewer, then turn to the car
+      fig.position.y = figRestY;
+      const look = Math.atan2(S.carStop.x - S.stand.x, S.carStop.z - S.stand.z);
+      fig.rotation.y = lerp(S.yaw0, look, inOut(ph(t, ...T.face)));
+      if (head) { head.rotation.set(0, 0, 0); head.position.copy(headRestPos); }
+      if (armR) armR.rotation.set(armRest.R, 0, armRestZ); if (armL) armL.rotation.set(armRest.L, 0, armRestZL);
+    }
+
+    // 2. the car pulls up
+    if (t >= T.carIn[0] && !S.gone) {
+      car.visible = true;
+      let d = 0, pitch = 0, shake = 0;
+      if (t < T.carIn[1]) d = -24 * Math.pow(1 - ph(t, ...T.carIn), 3);                       // brakes hard into the spot
+      else pitch = -0.035 * Math.exp(-(t - T.carIn[1]) * 6) * Math.sin((t - T.carIn[1]) * 14);  // nose dips and settles
+      if (t >= T.rev[0] && t < T.go[0]) { const u = ph(t, ...T.rev); shake = Math.sin(t * 90) * 0.012 * u; pitch = 0.02 * u; }
+      if (t >= T.go[0]) { const g = t - T.go[0]; d = 38 * g * g + 0.6 * g; pitch = 0.03 * Math.exp(-g * 3); }
+      car.position.copy(S.carStop).addScaledVector(FWD, d); car.position.x += shake;
+      car.rotation.set(0, CAR_YAW, 0); car.rotateX(pitch);
+      if (t >= T.go[1]) { S.gone = true; car.visible = false; }
+    }
+
+    // 3. hop in: a little arc from where it stands into the seat, legs folding to sit
+    if (t >= T.hop[0] && !S.seated) {
+      const u = ph(t, ...T.hop), e = inOut(u);
+      car.updateMatrixWorld(true);
+      const seat = car.localToWorld(SEAT.clone());
+      fig.position.set(lerp(S.stand.x, seat.x, e), lerp(figRestY, seat.y, e) + 0.9 * Math.sin(Math.PI * u), lerp(S.stand.z, seat.z, e));
+      const face = CAR_YAW + Math.PI, from = Math.atan2(S.carStop.x - S.stand.x, S.carStop.z - S.stand.z);
+      let dy = ((face - from) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+      fig.rotation.set(0, from + dy * e, 0);
+      const sit = inOut(ph(u, 0.35, 1));
+      if (legR) legR.rotation.x = legRest.R - 1.5708 * sit; if (legL) legL.rotation.x = legRest.L - 1.5708 * sit;
+      if (armR) armR.rotation.x = armRest.R - 1.1 * sit; if (armL) armL.rotation.x = armRest.L - 1.1 * sit;
+      if (u >= 1) { S.seated = true; car.attach(fig); }
+    }
+    if (S.seated && !S.gone) {   // seated: hold the driving pose (the main loop keeps writing its own)
+      fig.position.copy(SEAT); fig.rotation.set(0, Math.PI, 0);
+      if (head) { head.rotation.set(0, 0, 0); head.position.copy(headRestPos); }
+      if (legR) legR.rotation.x = legRest.R - 1.5708; if (legL) legL.rotation.x = legRest.L - 1.5708;
+      if (armR) armR.rotation.set(armRest.R - 1.1, 0, armRestZ); if (armL) armL.rotation.set(armRest.L - 1.1, 0, armRestZL);
+    }
+
+    // 4. gone: tidy up, and the hoodie figure drops back in
+    if (S.gone && !S.back) {
+      S.back = true;
+      scene.attach(A.figSuit); A.figSuit.scale.setScalar(25); A.figSuit.visible = false;
+      useFig(figHoodie); fig.visible = false;
+    }
+    if (S.back) {
+      fig.visible = t >= T.drop[0];
+      fig.position.y = figRestY + 2.4 * (1 - bounce(ph(t, ...T.drop)));
+    }
+    if (t >= T.end) {
+      fig.visible = true; fig.position.y = figRestY; car.visible = false;
+      cam.position.copy(camPos0); cam.lookAt(camTgt0); expand(false);
+      f1 = null; f1Busy = false;
+    }
+  };
+
+  // five quick taps: tap one waves (or walks) as usual; taps two to five light the lamps
+  let taps = 0, lastTap = 0, tapReset = 0;
+  state.tap = () => {
+    if (f1Busy) return true;
+    if (reduced || dead || !card.classList.contains('live')) return false;
+    const now = performance.now();
+    taps = now - lastTap < 800 ? taps + 1 : 1; lastTap = now;
+    clearTimeout(tapReset);
+    if (taps >= 2) { setLights(taps); loadF1().catch(() => {}); }
+    if (taps >= 5) { f1Busy = true; taps = 0; startF1(); return true; }
+    tapReset = setTimeout(() => { taps = 0; if (!f1Busy) setLights(0); }, 1000);
+    return taps >= 2;
+  };
+  // …or type "boxbox"
+  let typed = '';
+  addEventListener('keydown', e => {
+    const el = e.target;
+    if (e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1 || (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)))) return;
+    typed = (typed + e.key.toLowerCase()).slice(-6);
+    if (typed !== 'boxbox' || f1Busy || reduced || dead || !card.classList.contains('live')) return;
+    typed = ''; f1Busy = true;
+    if (document.activeElement === card) card.blur();
+    if (window.__enter) window.__enter();
+    loadF1().catch(() => {});
+    let n = 0;
+    const step = () => { setLights(++n); if (n < 5) setTimeout(step, 420); else startF1(); };
+    setTimeout(step, 500);
+  });
+  if (debugEl) window.__f1 = { load: loadF1, start: () => { f1Busy = true; startF1(); }, seek: t => { if (f1) { f1.t = t - 1 / 60; state.wake(); } } };
 
   /* Only swap the poster out for the canvas once WebGL demonstrably draws the
      figure: a test render into a small offscreen target, read back (reading

@@ -35,11 +35,10 @@ def main():
         "LOGO_NEW": a["logo_new"], "LOGO_OLD": a["logo_old"],
         "LYS_CLEAN": a["lys_clean"], "CONF": a["CONF"], "LEX": a["LEX"],
         # 3D minifigure
-        # the two outfits (one is picked at random per visit), each with its static poster
+        # the hoodie figure and its static poster (the race suit and car are fetched from f1/ on demand)
         "POSTER_HOODIE": b64file("minifig/poster-hoodie.png"),
-        "POSTER_AMG": b64file("minifig/poster-amg.png"),
         "GLB_HOODIE": b64file("minifig/hoodie.glb"),
-        "GLB_AMG": b64file("minifig/amg.glb"),
+        "MESHOPT_JS": read("vendor/meshopt_decoder.module.js"),
         "THREE_JS": read("vendor/three.module.min.js"),
         "BGU_JS": read("vendor/BufferGeometryUtils.js"),
         "GLTF_JS": read("vendor/GLTFLoader.js"),
@@ -49,7 +48,7 @@ def main():
     }
     rep.update({"NP%d" % i: a["NP%d" % i] for i in range(1, 11)})
 
-    for k in ("THREE_JS", "BGU_JS", "GLTF_JS"):
+    for k in ("THREE_JS", "BGU_JS", "GLTF_JS", "MESHOPT_JS"):
         assert "</script" not in rep[k].lower(), k + " would close its <script> early"
 
     html = read(TEMPLATE)
@@ -82,6 +81,14 @@ def main():
     with open(out, "w", encoding="utf-8") as f:
         f.write(doc)
     print("wrote", out, len(doc.encode()) // 1024, "KB")
+
+    # Easter-egg assets, fetched only when it plays: the race-suit figure and the car.
+    import shutil
+    f1 = os.path.join(ROOT, "f1")
+    os.makedirs(f1, exist_ok=True)
+    for src, dst in (("minifig/amg.glb", "amg.glb"), ("car/car.glb", "car.glb")):
+        shutil.copyfile(os.path.join(HERE, src), os.path.join(f1, dst))
+    print("copied f1/amg.glb, f1/car.glb")
 
 
 if __name__ == "__main__":
