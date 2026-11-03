@@ -66,7 +66,8 @@ def load_geom(gid):
     gcache[gid] = prims
     return prims
 
-DRIVER = re.compile(r'^(3815|3816|3817|3818|3819|3820|973|3814|3626|76382|3626)')
+# minifig: hips/legs, arms, hands, torso, head, helmet
+DRIVER_NODES = {'Part_%d' % i for i in (0, 1, 2, 3, 4, 5, 6, 7, 70, 212)}
 groups = {}  # material -> lists
 parts = 0
 for node in root.iter(tag('node')):
@@ -74,7 +75,7 @@ for node in root.iter(tag('node')):
     if ig is None: continue
     gid = ig.get('url')[1:]
     name = geoms[gid].get('name')
-    if DROP_DRIVER and DRIVER.match(name): continue
+    if DROP_DRIVER and node.get('id') in DRIVER_NODES: continue
     parts += 1
     M = np.array(node.find(tag('matrix')).text.split(), dtype=np.float64).reshape(4, 4)
     binds = {}

@@ -1,0 +1,86 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#f2f2f0">
+<canvas id="c" width="1400" height="800"></canvas>
+<script type="module">
+import * as THREE from './vendor/three.module.min.js';
+import { GLTFLoader } from './vendor/GLTFLoader.js';
+import { GLTFExporter } from './vendor/GLTFExporter.js';
+import { DecalGeometry } from './vendor/DecalGeometry.js';
+import { RoomEnvironment } from './vendor/RoomEnvironment.js';
+import { buildLogos, atlas } from './logos.js';
+const q = new URLSearchParams(location.search);
+const g = await new GLTFLoader().loadAsync(q.get('f')); const root = g.scene;
+root.scale.setScalar(1000); root.updateMatrixWorld(true);
+const meshes = []; root.traverse(o => o.isMesh && meshes.push(o));
+const r = new THREE.WebGLRenderer({ canvas: c, antialias: true, preserveDrawingBuffer: true }); r.setClearColor(0xf2f2f0, 1);
+r.toneMapping = THREE.ACESFilmicToneMapping;
+const scene = new THREE.Scene(); scene.add(root);
+const pm = new THREE.PMREMGenerator(r); scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.6;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x40485a, 1.2)); const k = new THREE.DirectionalLight(0xffffff, 2.0); k.position.set(1.2, 2, 2.2); scene.add(k);
+const rc = new THREE.Raycaster();
+const V = a => new THREE.Vector3(...a);
+function hit(o, d) {
+  rc.set(V(o), V(d).normalize()); rc.near = 0; rc.far = 1000;
+  const h = rc.intersectObjects(meshes, false)[0]; if (!h) return null;
+  const n = h.face.normal.clone().transformDirection(h.object.matrixWorld);
+  if (n.dot(rc.ray.direction) > 0) n.negate();
+  return { p: h.point, n, m: h.object.name };
+}
+window.probe = rays => rays.map(([o, d]) => { const h = hit(o, d); return h && { p: h.p.toArray().map(v => +v.toFixed(2)), n: h.n.toArray().map(v => +v.toFixed(2)), m: h.m }; });
+
+const L = await buildLogos(); const A = atlas(L);
+const half = document.createElement('canvas'); half.width = half.height = 1024; { const x = half.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(A.canvas, 0, 0, 1024, 1024); }
+const tex = new THREE.CanvasTexture(half); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; tex.anisotropy = 8;
+const dmat = new THREE.MeshStandardMaterial({ name: 'decals', map: tex, alphaTest: 0.5, roughness: 0.4, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+let decalMesh = null;
+window.build = specs => {
+  const pos = [], nrm = [], uv = [], log = [];
+  for (const s of specs) {
+    const h = s.at ? { p: V(s.at), n: V(s.n || [0, 0, 1]).normalize() } : hit(s.o, s.d);
+    if (!h) { log.push([s.id, 'MISS']); continue; }
+    const n = s.n ? V(s.n).normalize() : (s.useRay ? V(s.d).normalize().negate() : h.n);
+    const up = V(s.up || [0, 1, 0]); const z = n.clone(); const y = up.clone().addScaledVector(z, -up.dot(z)).normalize(); const x = new THREE.Vector3().crossVectors(y, z);
+    const M = new THREE.Matrix4().makeBasis(x, y, z); const e = new THREE.Euler().setFromRotationMatrix(M);
+    const R = A.rects[s.logo]; const w = s.w, hh = s.h || w / R.aspect;
+    const p = h.p.clone().addScaledVector(n, s.lift || 0);
+    if (s.shift) p.addScaledVector(x, s.shift[0]).addScaledVector(y, s.shift[1]);
+    let tris = 0;
+    for (const m of meshes) {
+      if (s.only && !s.only.some(t => m.name.startsWith(t))) continue;
+      const dg = new DecalGeometry(m, p, e, V([w, hh, s.depth || 3]));
+      const P = dg.attributes.position, N = dg.attributes.normal, U = dg.attributes.uv;
+      for (let i = 0; i < P.count; i += 3) {
+        let ok = true; const tn = [];
+        for (let j = 0; j < 3; j++) { const nn = V([N.getX(i + j), N.getY(i + j), N.getZ(i + j)]); if (nn.dot(z) < (s.minDot ?? 0.35)) ok = false; }
+        if (!ok) continue; tris++;
+        for (let j = 0; j < 3; j++) {
+          const vtx = V([P.getX(i + j), P.getY(i + j), P.getZ(i + j)]).addScaledVector(z, s.off ?? 0.05);
+          pos.push(vtx.x, vtx.y, vtx.z); nrm.push(N.getX(i + j), N.getY(i + j), N.getZ(i + j));
+          let u = U.getX(i + j), v = U.getY(i + j); if (s.flipU) u = 1 - u;
+          uv.push(R.r[0] + u * (R.r[2] - R.r[0]), 1 - (R.r[1] + v * (R.r[3] - R.r[1])));
+        }
+      }
+      dg.dispose();
+    }
+    log.push([s.id, tris, h.p.toArray().map(v => +v.toFixed(1)), n.toArray().map(v => +v.toFixed(2))]);
+  }
+  if (decalMesh) root.remove(decalMesh);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos.map(v => v / 1000), 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  decalMesh = new THREE.Mesh(geo, dmat); decalMesh.name = 'decals'; root.add(decalMesh);
+  return log;
+};
+window.shot = (az, el, z, t) => {
+  const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3()), ctr = t ? V(t) : box.getCenter(new THREE.Vector3());
+  const R = Math.max(size.x, size.y, size.z) * z, A = az * Math.PI / 180, E = el * Math.PI / 180;
+  const cam = new THREE.PerspectiveCamera(26, 1400 / 800, 1, 5000);
+  cam.position.set(ctr.x + Math.sin(A) * Math.cos(E) * R * 2.2, ctr.y + Math.sin(E) * R * 2.2, ctr.z + Math.cos(A) * Math.cos(E) * R * 2.2); cam.lookAt(ctr);
+  r.render(scene, cam);
+};
+window.exportGLB = () => new Promise((res, rej) => {
+  root.scale.setScalar(1); root.updateMatrixWorld(true);
+  new GLTFExporter().parse(root, b => { const u = new Uint8Array(b); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); res(btoa(s)); root.scale.setScalar(1000); root.updateMatrixWorld(true); }, rej, { binary: true });
+});
+window.done = true;
+</script>
