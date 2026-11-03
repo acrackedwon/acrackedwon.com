@@ -7,6 +7,7 @@ from PIL import Image
 
 src, outdir = sys.argv[1], sys.argv[2]
 DROP_DRIVER = '--drop-driver' in sys.argv
+PAINT = json.load(open(sys.argv[sys.argv.index('--paint') + 1])) if '--paint' in sys.argv else {}  # node id -> colour id
 os.makedirs(outdir, exist_ok=True)
 NS = '{http://www.collada.org/2005/11/COLLADASchema}'
 root = ET.parse(src).getroot()
@@ -81,7 +82,12 @@ for node in root.iter(tag('node')):
     binds = {}
     for im in ig.iter(tag('instance_material')):
         bv = im.find(tag('bind_vertex_input'))
-        binds[im.get('symbol')] = (im.get('target')[1:], bv.get('input_set') if bv is not None else None)
+        tgt = im.get('target')[1:]
+        if node.get('id') in PAINT:  # repaint: swap the colour id, keep any print
+            tgt = re.sub(r'^MB\|\d+', 'MB|' + str(PAINT[node.get('id')]), tgt)
+            if tgt not in materials:  # new colour+print combo: reuse the print effect of the original
+                materials[tgt] = materials[im.get('target')[1:]]
+        binds[im.get('symbol')] = (tgt, bv.get('input_set') if bv is not None else None)
     R = M[:3, :3]; N = np.linalg.inv(R).T; flip = np.linalg.det(R) < 0
     for pr in load_geom(gid):
         mat, uvset = binds.get(pr['mat']) or (list(binds.values())[0] if len(binds) == 1 else (pr['mat'], None))

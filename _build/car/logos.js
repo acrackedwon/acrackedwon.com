@@ -18,10 +18,11 @@ function trim(c, pad = 6) {
   const o = canvas(x1 - x0 + 1 + pad * 2, y1 - y0 + 1 + pad * 2); o.getContext('2d').drawImage(c, x0 - pad, y0 - pad, x1 - x0 + 1 + pad * 2, y1 - y0 + 1 + pad * 2, 0, 0, x1 - x0 + 1 + pad * 2, y1 - y0 + 1 + pad * 2); return o;
 }
 // draw an SVG big, keep only "ink" (dark-or-coloured pixels, or any opaque pixel if keepAll), recolour
-async function svgInk(file, colour, { scale = 4, crop = null, inkTest = null } = {}) {
+async function svgInk(file, colour, { scale = 4, crop = null, inkTest = null, bold = 0 } = {}) {
   const img = await svgImg(file);
   const w = img.naturalWidth || 400, h = img.naturalHeight || 120;
   const k = (H * scale) / h; const c = canvas(w * k, h * k); const x = c.getContext('2d', { willReadFrequently: true });
+  if (bold) { for (let a = 0; a < 16; a++) x.drawImage(img, Math.cos(a * Math.PI / 8) * bold, Math.sin(a * Math.PI / 8) * bold, c.width, c.height); }
   x.drawImage(img, 0, 0, c.width, c.height);
   const id = x.getImageData(0, 0, c.width, c.height), d = id.data;
   const [R, G, B] = hex(colour);
@@ -77,6 +78,7 @@ export async function buildLogos() {
   L.petronas = await svgInk('pw-1.svg', C.white, { crop: [0.307, 0.36, 1, 0.63] });
   L.petronasFull = row([{ c: await svgInk('pw-1.svg', C.teal, { crop: [0, 0, 0.303, 1] }), h: H * 1.9 }, { c: L.petronas }], 0.3, H * 1.9);
   const ineosW = await svgInk('k-ineos.svg', C.white);
+  L.ineosBold = await svgInk('k-ineos.svg', C.white, { bold: 7 });
   L.ineos = badge(ineosW, C.ineosRed);
   L.ineosWhite = ineosW;
   L.amg = await svgInk('amg.svg', C.white, { scale: 30 });
@@ -94,6 +96,9 @@ export async function buildLogos() {
   L.starDark = star('#24272b');
   L.amgDark = await svgInk('amg.svg', '#1d2023', { scale: 30 });
   L.petronasEmblem = await svgInk('pw-1.svg', C.teal, { crop: [0, 0, 0.303, 1] });
+  L.tealbar = (() => { const c = canvas(200, 60), x = c.getContext('2d'); x.fillStyle = C.teal; x.beginPath(); x.moveTo(30, 0); x.lineTo(200, 0); x.lineTo(170, 60); x.lineTo(0, 60); x.fill(); return c; })();
+  L.stripe = (() => { const c = canvas(1200, 40), x = c.getContext('2d'); x.fillStyle = C.teal; x.fillRect(0, 0, 1200, 40); return c; })();
+  L.eperf = text('E PERFORMANCE', C.white, { weight: 600, track: 8 });
   L.n63 = text('63', '#e0e3e6', { weight: 800 });
   return L;
 }
