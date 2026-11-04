@@ -17,8 +17,9 @@ Don't hand-edit either — edit the source here and rebuild.
   the race suit only appears in the easter egg. All motion is procedural, in `site.html`.
 - Easter egg ("lights out"): on PC five quick taps on the figure (tap 1 still waves; taps
   2–4 bring up the start gantry, dimmed), or typing `boxbox`; on mobile a 0.7s long press on
-  the bot (it shakes harder as you hold), and the run takes the whole screen: the page fades
-  under a veil (`.f1-veil`) and the card moves to the middle at intro size, then goes home. The gantry's five lamps come
+  the bot (it shakes harder as you hold). On mobile the bot stays in its corner and the
+  canvas covers the whole screen around it (unmasked; the screen edge is the frame), so the
+  to-scale car comes in large and leaves across the page. The gantry's five lamps come
   on 1.1s apart, then after a random hold (0.5–2.8s) all go out together: the figure spins into the race suit (teal ring + sparks), the car
   (`car/`, wheels rolling with the distance covered) pulls up, the figure hops into the cockpit and the car launches out of frame;
   then the hoodie figure drops back in. While it runs the canvas grows past the card
