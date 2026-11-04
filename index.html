@@ -131,6 +131,14 @@
     box-shadow: inset 0 0 0 2px #0b0b0b; transition: background-color .05s, box-shadow .05s;
   }
   .f1-units b.lit i:last-child { background-color: #ff2236; box-shadow: inset 0 0 0 2px #0b0b0b, 0 0 calc(var(--u) * .5) rgba(255, 34, 54, .8); }
+  /* mobile: the run takes over the screen — the page fades under a veil, the bot comes to the middle */
+  .f1-veil { position: fixed; inset: 0; z-index: 14; pointer-events: none; opacity: 0; transition: opacity .5s ease;
+    background: rgba(242, 242, 240, .82); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  html.f1-mob .f1-veil { opacity: 1; pointer-events: auto; }
+  html.f1-mob, html.f1-mob body { overflow: hidden; }
+  .tilt { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  @media (max-width: 899px) { html.f1-mob .f1-lights { left: 50%; right: auto; transform: translate(-50%, -100%) translateY(6px); }
+    html.f1-mob .f1-lights.on { transform: translate(-50%, -100%) translateY(-8px); } }
   @media (max-width: 899px) { .f1-lights { --u: 13px; left: auto; right: 0; transform: translateY(-100%) translateY(6px); } .f1-lights.on { transform: translateY(-100%) translateY(-8px); } .f1-units i { background-size: 2px 2px; } }
   .tilt.live .tilt-gl { opacity: 1; }
   .tilt.live .tilt-poster { opacity: 0; transition: opacity .5s ease; }
@@ -309,6 +317,7 @@
     </div>
   </div>
 </aside>
+<div class="f1-veil" aria-hidden="true"></div>
 
 <main class="page">
 
@@ -7343,9 +7352,9 @@ async function boot() {
     if (armR) armR.rotation.z = armRestZ + (w ? w.side : 0);
     if (legR) legR.rotation.x = legRest.R + legSwing;
     if (legL) legL.rotation.x = legRest.L - legSwing;
-    if (f1) f1Frame(sec);
+    if (f1) f1Frame(sec); else if (press) pressFrame();
     draw();
-    return waveT >= 0 || bot || !!walk || gazing || !!f1;
+    return waveT >= 0 || bot || !!walk || gazing || !!f1 || !!press;
   };
   botMode.addEventListener('change', () => state.wake());
   state.wave = () => {
@@ -7354,8 +7363,8 @@ async function boot() {
   };
 
   /* ---------------- easter egg: lights out ----------------
-     Five quick taps on the figure (or typing "boxbox") bring up a start
-     gantry over the card; its five lamps come on a second apart and, after a
+     Five quick taps on the figure or typing "boxbox" (on a phone: a long
+     press on the bot) bring up a start gantry over the card; its five lamps come on a second apart and, after a
      random hold, all go out together, like a race start: the figure spins into the race suit in a
      burst of teal, the car pulls up beside it, it hops into the cockpit and
      the car launches off, out of the frame. Then the hoodie figure drops back
@@ -7434,8 +7443,9 @@ async function boot() {
   const expand = on => {
     card.classList.toggle('f1', on);
     if (!on) { canvas.style.left = canvas.style.top = canvas.style.width = canvas.style.height = ''; cam.fov = FOV0; cam.aspect = ASPECT0; cam.updateProjectionMatrix(); return; }
-    const W = card.offsetWidth, H = card.offsetHeight, mob = botMode.matches;
-    const ex = mob ? 1.5 : 0.62, ey = mob ? 1.1 : 0.42;
+    const W = card.offsetWidth, H = card.offsetHeight;
+    const ex = mobScale ? Math.max(0.5, (innerWidth * 1.2 / (W * mobScale) - 1) / 2) : 0.62;
+    const ey = mobScale ? Math.max(0.4, (innerHeight * 1.05 / (H * mobScale) - 1) / 2) : 0.42;
     Object.assign(canvas.style, { left: -ex * W + 'px', top: -ey * H + 'px', width: W * (1 + 2 * ex) + 'px', height: H * (1 + 2 * ey) + 'px' });
     cam.fov = 2 * Math.atan(Math.tan(FOV0 * Math.PI / 360) * (1 + 2 * ey)) * 180 / Math.PI;
     cam.aspect = ASPECT0 * (1 + 2 * ex) / (1 + 2 * ey); cam.updateProjectionMatrix();
@@ -7445,13 +7455,15 @@ async function boot() {
      then after a random hold they all go out together — and away we go. */
   const runStart = async () => {
     f1Busy = true; loadF1().catch(() => {});
+    while (walk) await sleep(100);
+    if (botMode.matches) centreStage(true);
     setLights(0);
     for (let n = 1; n <= 5; n++) { await sleep(n === 1 ? 800 : 1100); setLights(n); }
     let A;
     try { A = await loadF1(); } catch (e) { setLights(-1); f1Busy = false; return; }
-    while (walk) await sleep(100);
     await sleep(500 + Math.random() * 2300);   // the hold before lights out
     setLights(0);
+    if (navigator.vibrate) navigator.vibrate(40);
     setTimeout(() => setLights(-1), 1300);
     begin(A);
   };
@@ -7556,14 +7568,54 @@ async function boot() {
     if (t >= T.end) {
       fig.visible = true; fig.position.y = figRestY; car.visible = false;
       cam.position.copy(camPos0); cam.lookAt(camTgt0); expand(false);
-      f1 = null; f1Busy = false;
+      f1 = null;
+      if (mobScale) setTimeout(() => { centreStage(false); setTimeout(() => { f1Busy = false; }, 900); }, 350); else f1Busy = false;
     }
   };
 
-  // five quick taps: tap one waves (or walks) as usual; taps two to four bring up the gantry, dimmed; five starts it
+  /* Mobile: the bot is a small thing in a corner, so the run takes the whole
+     screen — the page fades under a veil and the card moves to the middle at
+     intro size (the same move the intro makes), then goes back home after. */
+  let mobScale = 0;
+  const heroCard = document.querySelector('.hero-card');
+  const centreStage = on => {
+    document.documentElement.classList.toggle('f1-mob', on);
+    if (!on) { heroCard.style.transform = ''; mobScale = 0; return; }
+    heroCard.style.transform = '';
+    const r = heroCard.getBoundingClientRect();
+    mobScale = Math.min(300, innerWidth * 0.76) / r.width;
+    const dx = innerWidth / 2 - (r.left + r.width / 2), dy = innerHeight * 0.58 - (r.top + r.height / 2);
+    heroCard.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) scale(' + mobScale.toFixed(4) + ')';
+  };
+  /* …and it starts with a long press rather than taps (a tap sends the bot
+     walking). Holding it makes the bot shake harder and harder; at 0.7s it goes. */
+  const PRESS_MS = 700;
+  let press = 0, pressTimer = 0, pressAt = null, swallow = false;
+  const pressFrame = () => {
+    const k = Math.min(1, (performance.now() - press) / PRESS_MS);
+    fig.rotation.z = Math.sin(performance.now() * 0.07) * 0.05 * k * k;
+    fig.position.x = Math.sin(performance.now() * 0.11) * 0.02 * k * k;
+  };
+  const pressEnd = () => { clearTimeout(pressTimer); if (press) { press = 0; fig.rotation.z = 0; fig.position.x = 0; state.wake(); } };
+  card.addEventListener('pointerdown', e => {
+    if (!botMode.matches || f1Busy || reduced || dead || state.stage < 1 || !card.classList.contains('live')) return;
+    press = performance.now(); pressAt = [e.clientX, e.clientY]; state.wake();
+    pressTimer = setTimeout(() => {
+      pressEnd(); swallow = true;
+      if (navigator.vibrate) navigator.vibrate(25);
+      runStart();
+    }, PRESS_MS);
+  });
+  card.addEventListener('pointermove', e => { if (press && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) > 12) pressEnd(); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => card.addEventListener(t, pressEnd));
+  card.addEventListener('contextmenu', e => { if (botMode.matches) e.preventDefault(); });
+
+  // PC: five quick taps: tap one waves as usual; taps two to four bring up the gantry, dimmed; five starts it
   let taps = 0, lastTap = 0, tapReset = 0;
   state.tap = () => {
+    if (swallow) { swallow = false; return true; }    // the click that ends a long press
     if (f1Busy) return true;
+    if (botMode.matches) return false;               // mobile uses the long press
     if (reduced || dead || !card.classList.contains('live')) return false;
     const now = performance.now();
     taps = now - lastTap < 800 ? taps + 1 : 1; lastTap = now;
