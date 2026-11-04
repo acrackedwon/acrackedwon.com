@@ -7,12 +7,13 @@ Driver removed; repainted and decorated after the **W14 (2023)** race livery.
 `car.glb` (≈870 KB, 259 parts + one decal mesh, meshopt-compressed):
 
     python3 -I dae2gltf.py "<export>/….dae" out --drop-driver --paint paint-w14.json   # → out/w15-nodriver.glb
-    npx gltfpack@0.24.0 -i out/w15-nodriver.glb -o out/w15-nd-s.glb -si 0.3 -slb -noq
+    npx gltfpack@0.24.0 -i out/w15-nodriver.glb -o out/w15-nd-s.glb -si 0.3 -slb -noq -kn
     python3 specs-w14.py                                            # → specs-w14.json (decal list)
     CAR=out/w15-nd-s.glb node decal.cjs build specs-w14.json shot --export out/w15-decal.glb
-    npx gltfpack@0.24.0 -i out/w15-decal.glb -o car.glb -cc
+    npx gltfpack@0.24.0 -i out/w15-decal.glb -o car.glb -cc -kn
 
-- `dae2gltf.py`: merges parts by material, takes each print's UV set from `bind_vertex_input`,
+- `dae2gltf.py`: merges parts by material (the four wheel assemblies — tyre, hub cover, hub bits — go into
+  their own nodes `wheel_FL/FR/RL/RR`, origin on the axle, so the site can spin them), takes each print's UV set from `bind_vertex_input`,
   bakes base colour + print PNG into opaque textures. Metres, Y up, nose toward −Z.
 - `logos.js`: rasterises the brand marks (SVGs in `logos/`, lettering in Inter) into one atlas.
 - `decal.html` / `decal.cjs`: Playwright + three.js r170; projects each logo onto the

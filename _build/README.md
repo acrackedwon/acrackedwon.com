@@ -16,9 +16,9 @@ Don't hand-edit either — edit the source here and rebuild.
   LDraw.org parts (CC BY 2.0 — credited in the page footer). The page shows the hoodie;
   the race suit only appears in the easter egg. All motion is procedural, in `site.html`.
 - Easter egg ("lights out"): five quick taps on the figure (tap 1 still waves/walks; taps
-  2–5 light the start lights over the card), or typing `boxbox`. After a random hold the
-  lights go out: the figure spins into the race suit (teal ring + sparks), the car
-  (`car/`) pulls up, the figure hops into the cockpit and the car launches out of frame;
+  2–4 bring up the start gantry, dimmed), or typing `boxbox`. The gantry's five lamps come
+  on 1.1s apart, then after a random hold (0.5–2.8s) all go out together: the figure spins into the race suit (teal ring + sparks), the car
+  (`car/`, wheels rolling with the distance covered) pulls up, the figure hops into the cockpit and the car launches out of frame;
   then the hoodie figure drops back in. While it runs the canvas grows past the card
   (masked to fade at its edges) and the camera's FOV grows with it, so nothing jumps.
   `?debug` exposes `window.__f1` (`load`, `start`, `seek(t)`, `paused`) for stepping it.

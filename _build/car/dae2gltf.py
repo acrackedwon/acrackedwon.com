@@ -69,7 +69,15 @@ def load_geom(gid):
 
 # minifig: hips/legs, arms, hands, torso, head, helmet
 DRIVER_NODES = {'Part_%d' % i for i in (0, 1, 2, 3, 4, 5, 6, 7, 70, 212)}
-groups = {}  # material -> lists
+# wheel assemblies (tyre+rim, printed hub cover, hub bits) get their own node, pivoting on the axle
+WHEELS = {'FL': (24, 9.6, -56), 'FR': (-24, 9.6, -56), 'RL': (20, 9.6, 72), 'RR': (-20, 9.6, 72)}   # left = +x (the car faces -z)
+WHEEL_PARTS = {'105162', '110100', '4740', '6562', '18986', '65249', '32123'}
+def wheel_of(name, t):
+    if name not in WHEEL_PARTS: return ''
+    for k, c in WHEELS.items():
+        if abs(t[1] - c[1]) < 4 and abs(t[2] - c[2]) < 6 and np.sign(t[0]) == np.sign(c[0]): return k
+    return ''
+groups = {}  # (wheel, material) -> lists
 parts = 0
 for node in root.iter(tag('node')):
     ig = node.find(tag('instance_geometry'))
@@ -89,6 +97,7 @@ for node in root.iter(tag('node')):
                 materials[tgt] = materials[im.get('target')[1:]]
         binds[im.get('symbol')] = (tgt, bv.get('input_set') if bv is not None else None)
     R = M[:3, :3]; N = np.linalg.inv(R).T; flip = np.linalg.det(R) < 0
+    wk = wheel_of(name, M[:3, 3])
     for pr in load_geom(gid):
         mat, uvset = binds.get(pr['mat']) or (list(binds.values())[0] if len(binds) == 1 else (pr['mat'], None))
         pos = pr['pos'] @ R.T + M[:3, 3]
@@ -97,7 +106,8 @@ for node in root.iter(tag('node')):
         if flip:
             o = np.arange(len(pos)).reshape(-1, 3)[:, ::-1].ravel()
             pos, nrm = pos[o], nrm[o]; uv = uv[o] if uv is not None else None
-        groups.setdefault(mat, []).append((pos, nrm, uv, name))
+        if wk: pos = pos - np.array(WHEELS[wk])
+        groups.setdefault((wk, mat), []).append((pos, nrm, uv, name))
 
 print('parts', parts, 'materials', len(groups))
 
@@ -115,8 +125,8 @@ def add_acc(a, ctype, typ, target, minmax=False):
 
 def lin2srgb(c): c = np.clip(c, 0, 1); return np.where(c <= 0.0031308, c * 12.92, 1.055 * c ** (1 / 2.4) - 0.055)
 
-tot = 0
-for mat, lst in sorted(groups.items()):
+tot = 0; matidx = {}; wheelnodes = {}
+for (wk, mat), lst in sorted(groups.items()):
     pos = np.concatenate([l[0] for l in lst]) * 0.001  # mm -> m
     nrm = np.concatenate([l[1] for l in lst])
     has_uv = all(l[2] is not None for l in lst)
@@ -130,32 +140,39 @@ for mat, lst in sorted(groups.items()):
     m = re.match(r'MB\|(\d+)(?:\|(\w+))?-material', mat); cid, deco = m.group(1), m.group(2)
     eff = materials[mat]
     base = colour.get(cid, [1, 0, 1])
-    metal, rough = PBR.get(cid, (0.0, 0.5))
-    md = {'name': f'c{cid}' + (f'-{deco}' if deco else ''), 'pbrMetallicRoughness': {'metallicFactor': metal, 'roughnessFactor': rough}}
-    if deco and has_uv:
-        T = uv.astype(np.float32)[first].copy(); T[:, 1] = 1 - T[:, 1]
-        attrs['TEXCOORD_0'] = add_acc(T, 5126, 'VEC2', 34962)
-        im = Image.open(os.path.join(srcdir, images[eff[1]])).convert('RGBA')
-        bg = Image.new('RGBA', im.size, tuple(int(round(x * 255)) for x in lin2srgb(np.array(base))) + (255,))
-        comp = Image.alpha_composite(bg, im).convert('RGB')
-        if max(comp.size) > 512: comp = comp.resize((min(512, comp.size[0]), min(512, comp.size[1]) if comp.size[1] >= comp.size[0] else comp.size[1] * 512 // comp.size[0]), Image.LANCZOS)
-        b = io.BytesIO(); comp.save(b, 'PNG', optimize=True)
-        iv = add_view(bytes(b.getvalue()))
-        imgs.append({'bufferView': iv, 'mimeType': 'image/png', 'name': deco}); texs.append({'source': len(imgs) - 1, 'sampler': 0})
-        md['pbrMetallicRoughness']['baseColorTexture'] = {'index': len(texs) - 1}
+    if deco and has_uv: T = uv.astype(np.float32)[first].copy(); T[:, 1] = 1 - T[:, 1]; attrs['TEXCOORD_0'] = add_acc(T, 5126, 'VEC2', 34962)
+    if mat in matidx: mi = matidx[mat]
     else:
-        md['pbrMetallicRoughness']['baseColorFactor'] = base + [1.0]
-    if cid == '40':
-        md['pbrMetallicRoughness']['baseColorFactor'] = [0.9, 0.92, 0.95, 0.35]; md['alphaMode'] = 'BLEND'
-    mats.append(md)
+      mi = matidx[mat] = len(mats)
+      metal, rough = PBR.get(cid, (0.0, 0.5))
+      md = {'name': f'c{cid}' + (f'-{deco}' if deco else ''), 'pbrMetallicRoughness': {'metallicFactor': metal, 'roughnessFactor': rough}}
+      if deco and has_uv:
+          im = Image.open(os.path.join(srcdir, images[eff[1]])).convert('RGBA')
+          bg = Image.new('RGBA', im.size, tuple(int(round(x * 255)) for x in lin2srgb(np.array(base))) + (255,))
+          comp = Image.alpha_composite(bg, im).convert('RGB')
+          if max(comp.size) > 512: comp = comp.resize((min(512, comp.size[0]), min(512, comp.size[1]) if comp.size[1] >= comp.size[0] else comp.size[1] * 512 // comp.size[0]), Image.LANCZOS)
+          b = io.BytesIO(); comp.save(b, 'PNG', optimize=True)
+          iv = add_view(bytes(b.getvalue()))
+          imgs.append({'bufferView': iv, 'mimeType': 'image/png', 'name': deco}); texs.append({'source': len(imgs) - 1, 'sampler': 0})
+          md['pbrMetallicRoughness']['baseColorTexture'] = {'index': len(texs) - 1}
+      else:
+          md['pbrMetallicRoughness']['baseColorFactor'] = base + [1.0]
+      if cid == '40':
+          md['pbrMetallicRoughness']['baseColorFactor'] = [0.9, 0.92, 0.95, 0.35]; md['alphaMode'] = 'BLEND'
+      mats.append(md)
     ia = add_acc(idx, 5125, 'SCALAR', 34963)
-    meshes.append({'name': md['name'], 'primitives': [{'attributes': attrs, 'indices': ia, 'material': len(mats) - 1}]})
-    nodes.append({'mesh': len(meshes) - 1, 'name': md['name']})
+    mname = mats[mi]['name']
+    meshes.append({'name': mname, 'primitives': [{'attributes': attrs, 'indices': ia, 'material': mi}]})
+    nodes.append({'mesh': len(meshes) - 1, 'name': (f'wheel_{wk}_' if wk else '') + mname})
+    if wk: wheelnodes.setdefault(wk, []).append(len(nodes) - 1)
     tot += len(idx) // 3
-    print(f'{mat:28s} verts {len(P):7d} tris {len(idx)//3:7d}' + (' uv' if has_uv else ''))
+    print(f'{wk:2s} {mat:28s} verts {len(P):7d} tris {len(idx)//3:7d}' + (' uv' if has_uv else ''))
 
+roots = [i for i in range(len(nodes)) if not any(i in v for v in wheelnodes.values())]
+for wk, kids in sorted(wheelnodes.items()):
+    nodes.append({'name': 'wheel_' + wk, 'translation': [c * 0.001 for c in WHEELS[wk]], 'children': kids}); roots.append(len(nodes) - 1)
 gl = {'asset': {'version': '2.0', 'generator': 'dae2gltf (Mecabricks W15 by jwf1)'}, 'scene': 0,
-      'scenes': [{'nodes': list(range(len(nodes)))}], 'nodes': nodes, 'meshes': meshes, 'materials': mats,
+      'scenes': [{'nodes': roots}], 'nodes': nodes, 'meshes': meshes, 'materials': mats,
       'accessors': accs, 'bufferViews': views, 'buffers': [{'byteLength': len(bin_)}]}
 if texs: gl.update(textures=texs, images=imgs, samplers=[{'magFilter': 9729, 'minFilter': 9987}])
 js = json.dumps(gl, separators=(',', ':')).encode(); js += b' ' * (-len(js) % 4)
