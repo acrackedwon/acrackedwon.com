@@ -16,8 +16,9 @@ Don't hand-edit either — edit the source here and rebuild.
   LDraw.org parts (CC BY 2.0 — credited in the page footer). The page shows the hoodie;
   the race suit only appears in the easter egg. All motion is procedural, in `site.html`.
 - Easter egg ("lights out"): on PC five quick taps on the figure (tap 1 still waves; taps
-  2–4 bring up the start gantry, dimmed), or typing `boxbox`; on mobile a 0.7s long press on
-  the bot (it shakes harder as you hold). On mobile the bot stays in its corner and the
+  2–4 bring up the start gantry, dimmed), or typing `boxbox`; on mobile press and hold the bot:
+  it shakes, the gantry comes up and the lamps count down; it only goes if you are still
+  holding at lights out (letting go earlier calls it off). On mobile the bot stays in its corner and the
   canvas covers the whole screen around it (unmasked; the screen edge is the frame), so the
   to-scale car comes in large and leaves across the page. The gantry's five lamps come
   on 1.1s apart, then after a random hold (0.5–2.8s) all go out together: the figure spins into the race suit (teal ring + sparks), the car

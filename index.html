@@ -7453,19 +7453,24 @@ async function boot() {
 
   /* A race start: the five lamps come on one by one, about a second apart,
      then after a random hold they all go out together — and away we go. */
-  const runStart = async () => {
+  let startId = 0;                                   // bumped to call off a start under way
+  const runStart = async (onOut) => {
+    const id = ++startId, live = () => id === startId;
     f1Busy = true; loadF1().catch(() => {});
     while (walk) await sleep(100);
     setLights(0);
-    for (let n = 1; n <= 5; n++) { await sleep(n === 1 ? 800 : 1100); setLights(n); }
+    for (let n = 1; n <= 5; n++) { await sleep(n === 1 ? 800 : 1100); if (!live()) return; setLights(n); }
     let A;
-    try { A = await loadF1(); } catch (e) { setLights(-1); f1Busy = false; return; }
+    try { A = await loadF1(); } catch (e) { if (live()) { setLights(-1); f1Busy = false; } return; }
     await sleep(500 + Math.random() * 2300);   // the hold before lights out
+    if (!live()) return;
     setLights(0);
+    if (onOut) onOut();
     if (navigator.vibrate) navigator.vibrate(40);
     setTimeout(() => setLights(-1), 1300);
     begin(A);
   };
+  const cancelStart = () => { startId++; setLights(-1); f1Busy = false; };
   const begin = A => {
     expand(true);
     const stand = new THREE.Vector3(fig.position.x, figRestY, fig.position.z);
@@ -7577,24 +7582,30 @@ async function boot() {
      stage around it — the car is to scale, so it comes in near screen-wide,
      and leaves across the page. */
   const MOB_PULL = 1.2;
-  /* It starts with a long press rather than taps (a tap sends the bot
-     walking). Holding it makes the bot shake harder and harder; at 0.7s it goes. */
-  const PRESS_MS = 700;
-  let press = 0, pressTimer = 0, pressAt = null, swallow = false;
+  /* It starts with a press-and-hold rather than taps (a tap sends the bot
+     walking): hold the bot and it starts to shake, the gantry comes up and the
+     five lamps come on — keep holding through to lights out and it goes. Let
+     go any earlier and the start is called off. */
+  const PRESS_MS = 700, ARM_MS = 350;                // shake ramps up over PRESS_MS; the gantry comes up at ARM_MS
+  let press = 0, pressTimer = 0, pressAt = null, swallow = false, holding = false;
   const pressFrame = () => {
     const k = Math.min(1, (performance.now() - press) / PRESS_MS);
     fig.rotation.z = Math.sin(performance.now() * 0.07) * 0.05 * k * k;
     fig.position.x = Math.sin(performance.now() * 0.11) * 0.02 * k * k;
   };
-  const pressEnd = () => { clearTimeout(pressTimer); if (press) { press = 0; fig.rotation.z = 0; fig.position.x = 0; state.wake(); } };
+  const stopShake = () => { if (press) { press = 0; fig.rotation.z = 0; fig.position.x = 0; state.wake(); } };
+  const pressEnd = () => {
+    clearTimeout(pressTimer); stopShake();
+    if (holding) { holding = false; cancelStart(); }   // let go before lights out
+  };
   card.addEventListener('pointerdown', e => {
-    if (!botMode.matches || f1Busy || reduced || dead || state.stage < 1 || !card.classList.contains('live')) return;
-    press = performance.now(); pressAt = [e.clientX, e.clientY]; state.wake();
+    if (!botMode.matches || f1Busy || walk || reduced || dead || state.stage < 1 || !card.classList.contains('live')) return;
+    swallow = false; press = performance.now(); pressAt = [e.clientX, e.clientY]; state.wake();
     pressTimer = setTimeout(() => {
-      pressEnd(); swallow = true;
-      if (navigator.vibrate) navigator.vibrate(25);
-      runStart();
-    }, PRESS_MS);
+      holding = true; swallow = true;
+      if (navigator.vibrate) navigator.vibrate(15);
+      runStart(() => { holding = false; stopShake(); });   // lights out: held all the way, off it goes
+    }, ARM_MS);
   });
   card.addEventListener('pointermove', e => { if (press && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) > 12) pressEnd(); });
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => card.addEventListener(t, pressEnd));
