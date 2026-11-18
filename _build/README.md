@@ -2,7 +2,8 @@
 
 `../index.html` is a **generated, self-contained** file (images, fonts, three.js and the
 3D model are all inlined). The only other deployed files are `../f1/amg.glb` and
-`../f1/car.glb`, copied there by `build.py` and fetched only when the easter egg plays.
+`../f1/car.glb`, copied there by `build.py` and fetched only when the easter egg plays,
+and `../papers/` (linked PDFs, committed as they are).
 Don't hand-edit either — edit the source here and rebuild.
 
 ## Files
